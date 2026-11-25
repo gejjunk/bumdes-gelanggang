@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#047857">
+    <title>BUMDes Gelanggang — Aplikasi Warga</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Supabase JS v2 SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        tailwind.config = {
+            theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: contain;
+        }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        .fade-in { animation: fadeIn 0.22s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-emerald-200 selection:text-emerald-900">
+
+    <!-- TOP APP BAR — APLIKASI WARGA DESA GELANGGANG -->
+    <header class="sticky top-0 z-40 bg-emerald-700 text-white shadow-md">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+            <!-- Profil Warga & Status Cloud -->
+            <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-landmark text-white text-base"></i>
+                </div>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-1.5">
+                        <select id="warga-selector" onchange="changeActiveWarga(this.value)"
+                            class="text-sm font-bold text-white bg-transparent border-none focus:ring-0 p-0 cursor-pointer truncate max-w-[155px] sm:max-w-xs">
+                        </select>
+                        <button onclick="openDaftarWargaModal()" class="text-[10px] px-1.5 py-0.5 rounded bg-white/20 hover:bg-white/30 font-bold shrink-0" title="Daftar Warga Baru">+ Daftar</button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <p id="warga-dusun-label" class="text-[11px] text-emerald-100 truncate">Dusun Gelanggang Utara</p>
+                        <span id="cloud-status" class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-200 font-semibold shrink-0">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-300"></span> Lokal
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigasi Desktop/Tablet -->
+            <nav class="hidden md:flex items-center gap-1 bg-emerald-800/60 p-1 rounded-xl">
+                <button onclick="setWargaTab('beranda')" data-wtab="beranda" class="wtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition">Beranda</button>
+                <button onclick="setWargaTab('toko')" data-wtab="toko" class="wtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition">Toko UMKM</button>
+                <button onclick="setWargaTab('pinjaman')" data-wtab="pinjaman" class="wtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition">Pinjaman</button>
+                <button onclick="setWargaTab('sewa')" data-wtab="sewa" class="wtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition">Sewa Aset</button>
+                <button onclick="setWargaTab('transparansi')" data-wtab="transparansi" class="wtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition">Transparansi</button>
+                <button onclick="setWargaTab('aspirasi')" data-wtab="aspirasi" class="wtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition">Aspirasi</button>
+            </nav>
+
+            <!-- Tombol Darurat & Keranjang -->
+            <div class="flex items-center gap-2 shrink-0">
+                <button onclick="openDaruratModal()" class="px-2.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold shadow-md flex items-center gap-1.5 border border-rose-400/50 animate-pulse" aria-label="Panggilan Darurat">
+                    <i class="fa-solid fa-kit-medical"></i>
+                    <span class="hidden sm:inline">Darurat</span>
+                </button>
+                <button onclick="openCartModal()" class="relative p-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white transition border border-white/20" aria-label="Keranjang Belanja">
+                    <i class="fa-solid fa-cart-shopping"></i>
+                    <span id="warga-cart-badge" class="hidden absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- KONTEN UTAMA -->
+    <main id="warga-content" class="max-w-5xl mx-auto px-4 pt-5 pb-24 md:pb-10 fade-in"></main>
+
+    <!-- BOTTOM NAVIGATION BAR (MOBILE APK) -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 px-1.5 py-1.5 flex justify-around items-center shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+        <button onclick="setWargaTab('beranda')" data-wtab="beranda" class="wtab-mobile flex flex-col items-center gap-1 p-1.5 rounded-xl text-[10px] font-medium min-w-[52px]">
+            <i class="fa-solid fa-house text-base"></i><span>Beranda</span>
+        </button>
+        <button onclick="setWargaTab('toko')" data-wtab="toko" class="wtab-mobile flex flex-col items-center gap-1 p-1.5 rounded-xl text-[10px] font-medium min-w-[52px]">
+            <i class="fa-solid fa-store text-base"></i><span>Toko</span>
+        </button>
+        <button onclick="setWargaTab('pinjaman')" data-wtab="pinjaman" class="wtab-mobile flex flex-col items-center gap-1 p-1.5 rounded-xl text-[10px] font-medium min-w-[52px]">
+            <i class="fa-solid fa-hand-holding-dollar text-base"></i><span>Pinjam</span>
+        </button>
+        <button onclick="setWargaTab('sewa')" data-wtab="sewa" class="wtab-mobile flex flex-col items-center gap-1 p-1.5 rounded-xl text-[10px] font-medium min-w-[52px]">
+            <i class="fa-solid fa-tractor text-base"></i><span>Sewa</span>
+        </button>
+        <button onclick="setWargaTab('transparansi')" data-wtab="transparansi" class="wtab-mobile flex flex-col items-center gap-1 p-1.5 rounded-xl text-[10px] font-medium min-w-[52px]">
+            <i class="fa-solid fa-chart-pie text-base"></i><span>Dana</span>
+        </button>
+        <button onclick="setWargaTab('aspirasi')" data-wtab="aspirasi" class="wtab-mobile flex flex-col items-center gap-1 p-1.5 rounded-xl text-[10px] font-medium min-w-[52px]">
+            <i class="fa-solid fa-comments text-base"></i><span>Aduan</span>
+        </button>
+    </nav>
+
+    <!-- MODAL & TOAST -->
+    <div id="modal-backdrop" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[88vh] flex flex-col overflow-hidden fade-in">
+            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                <h3 id="modal-title" class="font-bold text-slate-900 text-base">Informasi</h3>
+                <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="modal-body" class="p-5 overflow-y-auto text-sm text-slate-700"></div>
+            <div id="modal-footer" class="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex justify-end gap-2"></div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="fixed bottom-20 md:bottom-6 right-4 z-50 space-y-2 max-w-xs w-full pointer-events-none"></div>
+
+    <script>
+        // =========================================================================
+        // 0. KONFIGURASI SUPABASE (ISI SESUAI PANDUAN DI panduan_cloud_dan_deploy.md)
+        //    Gunakan URL & ANON KEY yang SAMA PERSIS dengan apk_admin_gelanggang.html
+        // =========================================================================
+        const SUPABASE_URL = "https://nndfpovfpwubkhorkoqn.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_ZqIfPDRbS4EemVFDriNaYA_96gjh-C-";
+
+        let supabaseClient = null;
+        let isCloudConnected = false;
+
+        // =========================================================================
+        // 1. STATE & DATA DEFAULT APLIKASI WARGA
+        // =========================================================================
+        const state = {
+            wargaTab: 'beranda',
+            activeWargaId: 'W001',
+            selectedCategory: 'Semua',
+            cart: [],
+
+            wargaList: [
+                { id: 'W001', nama: 'Lalu Ahmad Fauzi', nik: '5203091204880001', dusun: 'Dusun Gelanggang Utara', wa: '6281912345678', status: 'Aktif' },
+                { id: 'W002', nama: 'Baiq Siti Rahmawati', nik: '5203095508910002', dusun: 'Dusun Gelanggang Tengah', wa: '6281987654321', status: 'Aktif' },
+                { id: 'W003', nama: 'H. Muhammad Ridwan', nik: '5203090102750003', dusun: 'Dusun Gelanggang Selatan', wa: '6287811223344', status: 'Aktif' },
+                { id: 'W004', nama: 'Nurul Hidayah', nik: '5203094409950004', dusun: 'Dusun Montong Baru', wa: '6285233445566', status: 'Aktif' }
+            ],
+
+            pengumuman: [
+                { id: 1, tanggal: '24 Nov 2026', judul: 'Stok Pupuk NPK & Beras Lokal Gelanggang Tersedia', isi: 'Warga dapat memesan langsung melalui menu Toko UMKM atau datang ke Kios BUMDes mulai pukul 08.00 WITA.' },
+                { id: 2, tanggal: '20 Nov 2026', judul: 'Program Pinjaman Modal Usaha Mikro Bunga 1%', isi: 'BUMDes Maju Bersama membuka pengajuan modal usaha tani dan dagang khusus warga ber-KTP Desa Gelanggang.' }
+            ],
+
+            produkList: [
+                { id: 'P01', nama: 'Beras Premium Gelanggang 5kg', kategori: 'Sembako', harga: 72000, stok: 45, satuan: 'Karung', icon: 'fa-wheat-awn', color: 'amber' },
+                { id: 'P02', nama: 'Pupuk NPK Phonska 50kg', kategori: 'Pertanian', harga: 145000, stok: 28, satuan: 'Sak', icon: 'fa-seedling', color: 'emerald' },
+                { id: 'P03', nama: 'Gas LPG 3kg (Subsidi)', kategori: 'Sembako', harga: 20000, stok: 35, satuan: 'Tabung', icon: 'fa-fire-flame-simple', color: 'sky' },
+                { id: 'P04', nama: 'Minyak Goreng Kemasan 1L', kategori: 'Sembako', harga: 17500, stok: 60, satuan: 'Pouch', icon: 'fa-bottle-droplet', color: 'yellow' },
+                { id: 'P05', nama: 'Kopi Bubuk UMKM Gelanggang 250g', kategori: 'UMKM Lokal', harga: 35000, stok: 22, satuan: 'Bungkus', icon: 'fa-mug-hot', color: 'orange' },
+                { id: 'P06', nama: 'Telur Ayam Kampung (1 Tray)', kategori: 'UMKM Lokal', harga: 62000, stok: 15, satuan: 'Tray', icon: 'fa-egg', color: 'rose' }
+            ],
+
+            pesananList: [
+                {
+                    id: 'ORD-101', tanggal: '2026-11-24', wargaId: 'W002', namaWarga: 'Baiq Siti Rahmawati', dusun: 'Dusun Gelanggang Tengah',
+                    items: [{ id: 'P01', nama: 'Beras Premium Gelanggang 5kg', qty: 2, harga: 72000 }],
+                    total: 144000, pengiriman: 'Antar ke Dusun', pembayaran: 'COD', status: 'Menunggu'
+                }
+            ],
+
+            pinjamanList: [
+                {
+                    id: 'PJ-201', tanggal: '2026-10-10', wargaId: 'W001', namaWarga: 'Lalu Ahmad Fauzi', wa: '6281912345678', dusun: 'Dusun Gelanggang Utara',
+                    nominal: 3000000, tenor: 6, angsuranPerBulan: 530000, sudahBayarBulan: 2,
+                    totalTagihan: 3180000, terbayar: 1060000, tujuan: 'Modal bibit padi & olah sawah', status: 'Aktif'
+                }
+            ],
+
+            asetList: [
+                { id: 'A01', nama: 'Paket Tenda Hajatan + 100 Kursi', tarif: 350000, satuan: 'Hari', status: 'Tersedia', deskripsi: 'Termasuk pemasangan & bongkar di wilayah Desa Gelanggang.', icon: 'fa-tent' },
+                { id: 'A02', nama: 'Hand Tractor (Traktor Tangan)', tarif: 200000, satuan: 'Hari', status: 'Tersedia', deskripsi: 'Kondisi prima untuk bajak sawah, belum termasuk BBM.', icon: 'fa-tractor' },
+                { id: 'A03', nama: 'Mobil Pick-Up Angkut Hasil Bumi', tarif: 150000, satuan: 'Rit / Hari', status: 'Tersedia', deskripsi: 'Kapasitas 1 ton, siap angkut gabah/sayur ke pasar.', icon: 'fa-truck-pickup' },
+                { id: 'A04', nama: 'Sound System & Genset Desa', tarif: 250000, satuan: 'Hari', status: 'Tersedia', deskripsi: 'Untuk hajatan, pengajian, atau rapat dusun.', icon: 'fa-volume-high' }
+            ],
+
+            bookingList: [
+                {
+                    id: 'SW-301', tanggalPakai: '2026-11-28', durasi: 2, namaAset: 'Paket Tenda Hajatan + 100 Kursi',
+                    wargaId: 'W004', namaWarga: 'Nurul Hidayah', dusun: 'Dusun Montong Baru', total: 700000, status: 'Menunggu'
+                }
+            ],
+
+            transaksiKas: [
+                { id: 'KAS-001', tanggal: '2026-11-01', jenis: 'Masuk', unit: 'Modal Desa', nominal: 50000000, keterangan: 'Saldo Awal Kas BUMDes Bulan November' },
+                { id: 'KAS-002', tanggal: '2026-11-05', jenis: 'Masuk', unit: 'Simpan Pinjam', nominal: 530000, keterangan: 'Angsuran ke-1 PJ-201 (Lalu Ahmad Fauzi)' },
+                { id: 'KAS-003', tanggal: '2026-11-10', jenis: 'Keluar', unit: 'Toko UMKM', nominal: 4500000, keterangan: 'Kulakan stok beras & pupuk NPK' },
+                { id: 'KAS-004', tanggal: '2026-11-15', jenis: 'Masuk', unit: 'Sewa Aset', nominal: 1200000, keterangan: 'Pendapatan sewa traktor & pick-up' },
+                { id: 'KAS-005', tanggal: '2026-11-20', jenis: 'Keluar', unit: 'Operasional', nominal: 850000, keterangan: 'Listrik kios, servis traktor & ATK' }
+            ],
+
+            aspirasiList: [
+                {
+                    id: 'ASP-01', tanggal: '2026-11-21', wargaId: 'W001', namaWarga: 'Lalu Ahmad Fauzi', kategori: 'Usulan Unit Usaha',
+                    pesan: 'Mohon stok gas LPG 3kg diperbanyak menjelang hari besar.',
+                    status: 'Ditanggapi', tanggapan: 'Terima kasih Pak Fauzi, kuota LPG sudah ditambah 20 tabung.'
+                }
+            ],
+
+            kontakDarurat: [
+                { id: 'DR-01', nama: 'Ambulans Desa Gelanggang', petugas: 'Unit Siaga Kesehatan Desa (24 Jam)', telp: '081912340118', wa: '6281912340118', icon: 'fa-truck-medical', color: 'rose' },
+                { id: 'DR-02', nama: 'Pemadam Kebakaran (Damkar)', petugas: 'Pos Damkar & Penyelamatan (113)', telp: '113', wa: '6281912340113', icon: 'fa-fire-extinguisher', color: 'orange' },
+                { id: 'DR-03', nama: 'Tenaga Medis / Bidan Desa', petugas: 'Polindes & Pustu Desa Gelanggang', telp: '081912340119', wa: '6281912340119', icon: 'fa-user-nurse', color: 'emerald' }
+            ]
+        };
+
+        // =========================================================================
+        // 2. MESIN SINKRONISASI CLOUD (SUPABASE POSTGRESQL + REALTIME)
+        // =========================================================================
+        const CLOUD_KEYS = ['wargaList', 'pengumuman', 'produkList', 'pesananList', 'pinjamanList', 'asetList', 'bookingList', 'transaksiKas', 'aspirasiList', 'kontakDarurat'];
+
+        async function initCloudSync() {
+            const configured = SUPABASE_URL && !SUPABASE_URL.includes('GANTI_DENGAN_') && SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes('GANTI_DENGAN_');
+            if (!configured || typeof window.supabase === 'undefined') {
+                setCloudBadge(false);
+                return;
+            }
+            try {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+                const { data, error } = await supabaseClient.from('bumdes_store').select('key, value');
+                if (error) {
+                    console.error('Supabase fetch error:', error);
+                    setCloudBadge(false);
+                    showToast('Koneksi Supabase gagal. Pastikan tabel bumdes_store sudah dibuat.', 'error');
+                    return;
+                }
+
+                isCloudConnected = true;
+                setCloudBadge(true);
+
+                if (!data || data.length === 0) {
+                    const rows = CLOUD_KEYS.map(k => ({ key: k, value: state[k] }));
+                    await supabaseClient.from('bumdes_store').upsert(rows, { onConflict: 'key' });
+                } else {
+                    data.forEach(row => {
+                        if (CLOUD_KEYS.includes(row.key) && row.value !== null && row.value !== undefined) {
+                            state[row.key] = row.value;
+                        }
+                    });
+                    initWargaSelector();
+                    renderApp();
+                }
+
+                supabaseClient
+                    .channel('bumdes-warga-realtime')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'bumdes_store' }, (payload) => {
+                        if (payload.new && CLOUD_KEYS.includes(payload.new.key)) {
+                            state[payload.new.key] = payload.new.value;
+                            initWargaSelector();
+                            renderApp();
+                        }
+                    })
+                    .subscribe();
+
+            } catch (e) {
+                console.error(e);
+                setCloudBadge(false);
+            }
+        }
+
+        async function syncCloudKey(key) {
+            if (supabaseClient && isCloudConnected) {
+                const { error } = await supabaseClient
+                    .from('bumdes_store')
+                    .upsert({ key: key, value: state[key], updated_at: new Date().toISOString() }, { onConflict: 'key' });
+                if (error) {
+                    console.error('Gagal sync ke Supabase:', error);
+                    showToast('Gagal menyimpan ke Supabase, cek koneksi internet.', 'error');
+                }
+            }
+        }
+
+        function setCloudBadge(online) {
+            const el = document.getElementById('cloud-status');
+            if (!el) return;
+            if (online) {
+                el.className = 'inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-400/25 text-emerald-100 font-semibold shrink-0';
+                el.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse"></span> Supabase';
+            } else {
+                el.className = 'inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-200 font-semibold shrink-0';
+                el.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-300"></span> Lokal';
+            }
+        }
+
+        // =========================================================================
+        // 3. HELPER, MODAL & PENDAFTARAN WARGA
+        // =========================================================================
+        const formatRp = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num || 0);
+        const todayISO = () => new Date().toISOString().split('T')[0];
+        const getActiveWarga = () => state.wargaList.find(w => w.id === state.activeWargaId) || state.wargaList[0];
+
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const colors = { success: 'bg-emerald-600 text-white', info: 'bg-slate-800 text-white', warning: 'bg-amber-500 text-white', error: 'bg-rose-600 text-white' };
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto px-4 py-3 rounded-2xl shadow-xl text-xs font-semibold fade-in ${colors[type] || colors.info}`;
+            toast.textContent = msg;
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 3000);
+        }
+
+        function openModal(title, body, footer = '') {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-body').innerHTML = body;
+            document.getElementById('modal-footer').innerHTML = footer || `<button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-200 text-xs font-bold">Tutup</button>`;
+            document.getElementById('modal-backdrop').classList.remove('hidden');
+        }
+        function closeModal() { document.getElementById('modal-backdrop').classList.add('hidden'); }
+
+        function openDaftarWargaModal() {
+            openModal('Pendaftaran Akun Warga Desa Gelanggang', `
+                <div class="space-y-3">
+                    <input id="dw-nama" placeholder="Nama Lengkap sesuai KTP" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs">
+                    <input id="dw-nik" maxlength="16" placeholder="NIK (16 Digit)" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs">
+                    <select id="dw-dusun" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs">
+                        <option value="Dusun Gelanggang Utara">Dusun Gelanggang Utara</option>
+                        <option value="Dusun Gelanggang Tengah">Dusun Gelanggang Tengah</option>
+                        <option value="Dusun Gelanggang Selatan">Dusun Gelanggang Selatan</option>
+                        <option value="Dusun Montong Baru">Dusun Montong Baru</option>
+                    </select>
+                    <input id="dw-wa" placeholder="No. WhatsApp (contoh: 0819...)" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs">
+                </div>
+            `, `
+                <button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-200 text-xs font-bold">Batal</button>
+                <button onclick="saveDaftarWarga()" class="px-5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">Daftar Sekarang</button>
+            `);
+        }
+
+        function saveDaftarWarga() {
+            const nama = document.getElementById('dw-nama').value.trim();
+            const nik = document.getElementById('dw-nik').value.trim();
+            const dusun = document.getElementById('dw-dusun').value;
+            const waRaw = document.getElementById('dw-wa').value.replace(/[^0-9]/g, '');
+            if (!nama || nik.length < 10) { showToast('Isi Nama Lengkap & NIK yang valid!', 'warning'); return; }
+            const newId = 'W' + String(Date.now()).slice(-4);
+            state.wargaList.push({ id: newId, nama, nik, dusun, wa: waRaw.replace(/^0/, '62') || '628', status: 'Aktif' });
+            state.activeWargaId = newId;
+            syncCloudKey('wargaList');
+            closeModal();
+            initWargaSelector();
+            renderApp();
+            showToast(`Selamat datang, ${nama}! Akun warga terdaftar.`, 'success');
+        }
+
+        function openDaruratModal() {
+            const warga = getActiveWarga();
+            const body = `
+                <div class="space-y-3">
+                    <div class="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5">
+                        <i class="fa-solid fa-triangle-exclamation text-rose-600 text-base mt-0.5"></i>
+                        <p>Gunakan layanan ini untuk kondisi darurat. Pesan WhatsApp otomatis mencantumkan nama (<strong>${warga.nama}</strong>) & dusun (<strong>${warga.dusun}</strong>).</p>
+                    </div>
+                    ${state.kontakDarurat.map(k => {
+                        const waText = encodeURIComponent(`DARURAT! Mohon bantuan ${k.nama} segera.\n\nPelapor: ${warga.nama}\nLokasi: ${warga.dusun}, Desa Gelanggang`);
+                        return `
+                            <div class="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm space-y-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-11 h-11 rounded-xl bg-${k.color || 'rose'}-100 text-${k.color || 'rose'}-600 flex items-center justify-center text-lg shrink-0">
+                                        <i class="fa-solid ${k.icon || 'fa-phone'}"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="font-extrabold text-sm text-slate-900">${k.nama}</p>
+                                        <p class="text-[11px] text-slate-500">${k.petugas}</p>
+                                        <p class="text-xs font-bold text-slate-700 mt-0.5"><i class="fa-solid fa-phone text-[10px] mr-1"></i>${k.telp}</p>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <a href="tel:${k.telp}" class="py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm">
+                                        <i class="fa-solid fa-phone-volume"></i> Telepon
+                                    </a>
+                                    <a href="https://wa.me/${k.wa}?text=${waText}" target="_blank" class="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm">
+                                        <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp
+                                    </a>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+            openModal('Layanan Darurat 24 Jam Desa Gelanggang', body);
+        }
+
+        function updateCartBadge() {
+            const qty = state.cart.reduce((s, i) => s + i.qty, 0);
+            const b = document.getElementById('warga-cart-badge');
+            if (!b) return;
+            b.textContent = qty;
+            b.classList.toggle('hidden', qty === 0);
+        }
+
+        function initWargaSelector() {
+            const sel = document.getElementById('warga-selector');
+            if (!sel) return;
+            sel.innerHTML = state.wargaList.map(w =>
+                `<option value="${w.id}" class="text-slate-800" ${w.id === state.activeWargaId ? 'selected' : ''}>${w.nama}</option>`
+            ).join('');
+            const active = getActiveWarga();
+            if (active) document.getElementById('warga-dusun-label').textContent = active.dusun;
+        }
+
+        function changeActiveWarga(id) {
+            state.activeWargaId = id;
+            state.cart = [];
+            initWargaSelector();
+            updateCartBadge();
+            renderApp();
+        }
+
+        function setWargaTab(tab) {
+            state.wargaTab = tab;
+            renderApp();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function calcTransparansi() {
+            let masuk = 0, keluar = 0, pendUsaha = 0, beban = 0;
+            const perUnit = { 'Toko UMKM': 0, 'Simpan Pinjam': 0, 'Sewa Aset': 0 };
+            state.transaksiKas.forEach(t => {
+                if (t.jenis === 'Masuk') {
+                    masuk += t.nominal;
+                    if (t.unit !== 'Modal Desa') {
+                        pendUsaha += t.nominal;
+                        if (perUnit[t.unit] !== undefined) perUnit[t.unit] += t.nominal;
+                    }
+                } else { keluar += t.nominal; beban += t.nominal; }
+            });
+            const laba = Math.max(0, pendUsaha - beban);
+            return { saldoKas: masuk - keluar, pendUsaha, beban, pades: Math.round(laba * 0.30), perUnit };
+        }
+
+        // =========================================================================
+        // 4. RENDER HALAMAN WARGA
+        // =========================================================================
+        function renderApp() {
+            document.querySelectorAll('.wtab-btn').forEach(btn => {
+                const act = btn.dataset.wtab === state.wargaTab;
+                btn.className = act ? 'wtab-btn px-3 py-1.5 rounded-lg text-xs font-bold transition bg-white text-emerald-700 shadow-sm' : 'wtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition text-emerald-100 hover:text-white';
+            });
+            document.querySelectorAll('.wtab-mobile').forEach(btn => {
+                const act = btn.dataset.wtab === state.wargaTab;
+                btn.className = act ? 'wtab-mobile flex flex-col items-center gap-1 p-1.5 rounded-xl text-[10px] font-bold min-w-[52px] text-emerald-600 bg-emerald-50' : 'wtab-mobile flex flex-col items-center gap-1 p-1.5 rounded-xl text-[10px] font-medium min-w-[52px] text-slate-500';
+            });
+
+            const el = document.getElementById('warga-content');
+            const warga = getActiveWarga();
+            if (!el || !warga) return;
+
+            if (state.wargaTab === 'beranda') renderBeranda(el, warga);
+            else if (state.wargaTab === 'toko') renderToko(el, warga);
+            else if (state.wargaTab === 'pinjaman') renderPinjaman(el, warga);
+            else if (state.wargaTab === 'sewa') renderSewa(el, warga);
+            else if (state.wargaTab === 'transparansi') renderTransparansi(el);
+            else if (state.wargaTab === 'aspirasi') renderAspirasi(el, warga);
+        }
+
+        function renderBeranda(el, warga) {
+            const myLoans = state.pinjamanList.filter(p => p.wargaId === warga.id && p.status === 'Aktif');
+            const myOrders = state.pesananList.filter(o => o.wargaId === warga.id && o.status !== 'Selesai');
+            const myBookings = state.bookingList.filter(b => b.wargaId === warga.id);
+            const sisa = myLoans.reduce((s, p) => s + Math.max(0, p.totalTagihan - p.terbayar), 0);
+
+            el.innerHTML = `
+                <div class="space-y-5">
+                    <div class="rounded-3xl bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-700 text-white p-5 sm:p-7 shadow-lg relative overflow-hidden">
+                        <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 text-emerald-50 text-[10px] font-bold mb-2">
+                                    <i class="fa-solid fa-location-dot"></i> BUMDes Maju Bersama • Desa Gelanggang
+                                </span>
+                                <h1 class="text-xl sm:text-2xl font-extrabold">Halo, ${warga.nama}</h1>
+                                <p class="text-xs text-emerald-100 mt-1 max-w-md">Belanja produk UMKM, ajukan modal usaha, sewa aset desa, hingga layanan darurat 24 jam.</p>
+                            </div>
+                            <div class="bg-white/15 backdrop-blur-md border border-white/20 rounded-2xl p-3.5 min-w-[210px]">
+                                <p class="text-[11px] text-emerald-100">Sisa Tagihan Pinjaman</p>
+                                <p class="text-lg font-extrabold mt-0.5">${formatRp(sisa)}</p>
+                                <div class="flex items-center gap-3 mt-2 pt-2 border-t border-white/15 text-[11px] text-emerald-50">
+                                    <span><i class="fa-solid fa-box mr-1"></i> ${myOrders.length} Pesanan</span>
+                                    <span><i class="fa-solid fa-calendar-check mr-1"></i> ${myBookings.length} Sewa</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                        <button onclick="setWargaTab('toko')" class="bg-white active:scale-95 border border-slate-200 hover:border-emerald-400 p-4 rounded-2xl text-left shadow-sm transition">
+                            <div class="w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg mb-2.5"><i class="fa-solid fa-store"></i></div>
+                            <p class="font-bold text-sm">Toko UMKM</p><p class="text-[11px] text-slate-500">Beras, pupuk & UMKM</p>
+                        </button>
+                        <button onclick="setWargaTab('pinjaman')" class="bg-white active:scale-95 border border-slate-200 hover:border-emerald-400 p-4 rounded-2xl text-left shadow-sm transition">
+                            <div class="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-lg mb-2.5"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                            <p class="font-bold text-sm">Simpan Pinjam</p><p class="text-[11px] text-slate-500">Modal bunga 1%</p>
+                        </button>
+                        <button onclick="setWargaTab('sewa')" class="bg-white active:scale-95 border border-slate-200 hover:border-emerald-400 p-4 rounded-2xl text-left shadow-sm transition">
+                            <div class="w-11 h-11 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center text-lg mb-2.5"><i class="fa-solid fa-tractor"></i></div>
+                            <p class="font-bold text-sm">Sewa Aset</p><p class="text-[11px] text-slate-500">Tenda, traktor & mobil</p>
+                        </button>
+                        <button onclick="setWargaTab('transparansi')" class="bg-white active:scale-95 border border-slate-200 hover:border-emerald-400 p-4 rounded-2xl text-left shadow-sm transition">
+                            <div class="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-lg mb-2.5"><i class="fa-solid fa-chart-pie"></i></div>
+                            <p class="font-bold text-sm">Transparansi</p><p class="text-[11px] text-slate-500">Kas & PADes live</p>
+                        </button>
+                        <button onclick="setWargaTab('aspirasi')" class="col-span-2 sm:col-span-1 bg-white active:scale-95 border border-slate-200 hover:border-emerald-400 p-4 rounded-2xl text-left shadow-sm transition">
+                            <div class="w-11 h-11 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-lg mb-2.5"><i class="fa-solid fa-comments"></i></div>
+                            <p class="font-bold text-sm">Aspirasi</p><p class="text-[11px] text-slate-500">Saran & pengaduan</p>
+                        </button>
+                    </div>
+
+                    <div class="rounded-2xl bg-gradient-to-r from-rose-600 to-red-700 text-white p-4 sm:p-5 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center text-2xl shrink-0"><i class="fa-solid fa-truck-medical"></i></div>
+                            <div>
+                                <span class="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold uppercase">Siaga 24 Jam</span>
+                                <h3 class="font-extrabold text-base mt-0.5">Layanan Darurat Desa Gelanggang</h3>
+                                <p class="text-xs text-rose-100">Ambulans Desa, Pemadam Kebakaran (Damkar), & Bidan Desa.</p>
+                            </div>
+                        </div>
+                        <button onclick="openDaruratModal()" class="px-5 py-2.5 rounded-xl bg-white text-rose-700 hover:bg-rose-50 font-extrabold text-xs shadow shrink-0 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-phone-volume"></i> Hubungi Darurat
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+                        <h3 class="font-bold text-sm flex items-center gap-2 mb-3"><i class="fa-solid fa-bullhorn text-emerald-600"></i> Pengumuman Desa</h3>
+                        <div class="space-y-3">
+                            ${state.pengumuman.map(p => `
+                                <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                                    <span class="text-[10px] font-bold text-emerald-600 uppercase">${p.tanggal}</span>
+                                    <h4 class="font-bold text-sm mt-0.5">${p.judul}</h4>
+                                    <p class="text-xs text-slate-600 mt-1">${p.isi}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderToko(el, warga) {
+            const cats = ['Semua', 'Sembako', 'Pertanian', 'UMKM Lokal'];
+            const list = state.selectedCategory === 'Semua' ? state.produkList : state.produkList.filter(p => p.kategori === state.selectedCategory);
+            const myOrders = state.pesananList.filter(o => o.wargaId === warga.id);
+
+            el.innerHTML = `
+                <div class="space-y-5">
+                    <div class="flex flex-wrap justify-between items-center gap-3">
+                        <div><h2 class="text-xl font-extrabold">Toko Desa & UMKM</h2><p class="text-xs text-slate-500">Pesanan langsung masuk ke Kasir BUMDes.</p></div>
+                        <button onclick="openCartModal()" class="px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow"><i class="fa-solid fa-cart-shopping mr-1"></i> Keranjang (${state.cart.reduce((s,i)=>s+i.qty,0)})</button>
+                    </div>
+                    <div class="flex gap-2 overflow-x-auto pb-1">
+                        ${cats.map(c => `<button onclick="state.selectedCategory='${c}';renderApp()" class="px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${state.selectedCategory===c?'bg-emerald-600 text-white':'bg-white border text-slate-600'}">${c}</button>`).join('')}
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        ${list.map(p => `
+                            <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between">
+                                <div>
+                                    <div class="flex justify-between mb-3">
+                                        <div class="w-11 h-11 rounded-2xl bg-${p.color || 'emerald'}-100 text-${p.color || 'emerald'}-600 flex items-center justify-center text-lg"><i class="fa-solid ${p.icon || 'fa-box'}"></i></div>
+                                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">${p.kategori}</span>
+                                    </div>
+                                    <h3 class="font-bold text-sm">${p.nama}</h3>
+                                    <p class="text-lg font-extrabold text-emerald-600 mt-1">${formatRp(p.harga)} <span class="text-xs font-normal text-slate-400">/ ${p.satuan}</span></p>
+                                </div>
+                                <div class="mt-4 pt-3 border-t flex justify-between items-center">
+                                    <span class="text-xs ${p.stok>5?'text-slate-500':'text-rose-600 font-bold'}">Stok: ${p.stok}</span>
+                                    <button onclick="addToCart('${p.id}')" ${p.stok<=0?'disabled':''} class="px-3.5 py-2 rounded-xl text-xs font-bold ${p.stok>0?'bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white':'bg-slate-100 text-slate-400'}">+ Tambah</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+                        <h3 class="font-bold text-sm mb-3">Riwayat Pesanan Anda</h3>
+                        ${myOrders.length===0?'<p class="text-xs text-slate-400">Belum ada pesanan.</p>':myOrders.map(o=>`
+                            <div class="p-3 rounded-xl bg-slate-50 border flex flex-wrap justify-between items-center gap-2 mb-2 text-xs">
+                                <div><p class="font-bold">${o.id} • ${o.tanggal}</p><p class="text-slate-600">${o.items.map(i=>`${i.nama} (${i.qty}x)`).join(', ')}</p></div>
+                                <div class="text-right"><p class="font-extrabold text-emerald-700">${formatRp(o.total)}</p><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${o.status==='Selesai'?'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-700'}">${o.status}</span></div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function addToCart(id) {
+            const p = state.produkList.find(x => x.id === id);
+            if (!p || p.stok <= 0) return;
+            const ex = state.cart.find(i => i.id === id);
+            ex ? ex.qty++ : state.cart.push({ id: p.id, nama: p.nama, harga: p.harga, qty: 1 });
+            updateCartBadge(); renderApp(); showToast(`${p.nama} masuk keranjang`, 'success');
+        }
+
+        function openCartModal() {
+            if (state.cart.length === 0) { openModal('Keranjang', '<p class="text-center py-6 text-slate-400">Keranjang kosong.</p>'); return; }
+            const tot = state.cart.reduce((s, i) => s + (i.harga * i.qty), 0);
+            openModal('Checkout Pesanan', `
+                <div class="space-y-2 mb-3">
+                    ${state.cart.map((i, idx) => `<div class="flex justify-between items-center p-2.5 rounded-xl bg-slate-50 text-xs"><div><p class="font-bold">${i.nama}</p><p class="text-emerald-600">${formatRp(i.harga)} x ${i.qty}</p></div><button onclick="state.cart.splice(${idx},1);updateCartBadge();openCartModal()" class="text-rose-500"><i class="fa-solid fa-trash"></i></button></div>`).join('')}
+                </div>
+                <div class="space-y-2.5 pt-2 border-t">
+                    <select id="c-kirim" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"><option value="Antar ke Dusun">Antar ke Rumah (${getActiveWarga().dusun})</option><option value="Ambil di Kios BUMDes">Ambil di Kios BUMDes</option></select>
+                    <select id="c-bayar" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"><option value="COD">COD / Bayar di Tempat</option><option value="Transfer BUMDes">Transfer Rekening BUMDes</option></select>
+                    <div class="flex justify-between font-extrabold text-base pt-1"><span>Total</span><span class="text-emerald-600">${formatRp(tot)}</span></div>
+                </div>
+            `, `
+                <button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-200 text-xs font-bold">Batal</button>
+                <button onclick="checkoutCart()" class="px-5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">Kirim Pesanan</button>
+            `);
+        }
+
+        function checkoutCart() {
+            const w = getActiveWarga();
+            const tot = state.cart.reduce((s, i) => s + (i.harga * i.qty), 0);
+            const id = 'ORD-' + String(Date.now()).slice(-4);
+            state.pesananList.unshift({
+                id, tanggal: todayISO(), wargaId: w.id, namaWarga: w.nama, dusun: w.dusun,
+                items: JSON.parse(JSON.stringify(state.cart)), total: tot,
+                pengiriman: document.getElementById('c-kirim').value,
+                pembayaran: document.getElementById('c-bayar').value, status: 'Menunggu'
+            });
+            state.cart = [];
+            syncCloudKey('pesananList');
+            closeModal(); updateCartBadge(); renderApp();
+            showToast(`Pesanan ${id} terkirim ke Admin Desa!`, 'success');
+        }
+
+        function renderPinjaman(el, warga) {
+            const myLoans = state.pinjamanList.filter(p => p.wargaId === warga.id);
+            el.innerHTML = `
+                <div class="grid lg:grid-cols-12 gap-5">
+                    <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm h-fit space-y-4">
+                        <div><h2 class="text-lg font-extrabold">Ajukan Simpan Pinjam</h2><p class="text-xs text-slate-500">Jasa 1% flat/bulan untuk warga Desa Gelanggang.</p></div>
+                        <div>
+                            <div class="flex justify-between text-xs font-bold mb-1"><span>Nominal</span><span id="sim-nom-lbl" class="text-emerald-600">Rp 2.000.000</span></div>
+                            <input type="range" id="sim-nom" min="500000" max="15000000" step="500000" value="2000000" oninput="calcSim()" class="w-full accent-emerald-600">
+                        </div>
+                        <select id="sim-ten" onchange="calcSim()" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold"><option value="3">3 Bulan</option><option value="6" selected>6 Bulan</option><option value="10">10 Bulan</option><option value="12">12 Bulan</option></select>
+                        <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200">
+                            <p class="text-[11px] font-bold text-emerald-800 uppercase">Angsuran / Bulan</p>
+                            <p id="sim-ang" class="text-2xl font-extrabold text-emerald-700"></p>
+                            <p id="sim-det" class="text-[11px] text-emerald-700 mt-1"></p>
+                        </div>
+                        <textarea id="loan-tujuan" rows="2" placeholder="Tujuan penggunaan modal..." class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"></textarea>
+                        <button onclick="submitLoan()" class="w-full py-3 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow">Kirim Pengajuan</button>
+                    </div>
+                    <div class="lg:col-span-7 space-y-3">
+                        <h3 class="font-bold text-sm">Pinjaman Anda</h3>
+                        ${myLoans.length===0?'<div class="bg-white rounded-2xl border p-8 text-center text-xs text-slate-400">Belum ada pinjaman.</div>':myLoans.map(l=>`
+                            <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm text-xs space-y-2">
+                                <div class="flex justify-between items-center"><span class="font-bold text-sm">${l.id} • ${formatRp(l.nominal)}</span><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${l.status==='Aktif'?'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-700'}">${l.status}</span></div>
+                                <p class="text-slate-500">${l.tujuan}</p>
+                                <p>Terbayar: <strong class="text-emerald-600">${l.sudahBayarBulan}/${l.tenor} bln (${formatRp(l.terbayar)})</strong> • Sisa: <strong class="text-rose-600">${formatRp(Math.max(0, l.totalTagihan - l.terbayar))}</strong></p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            calcSim();
+        }
+
+        function calcSim() {
+            const nom = parseInt(document.getElementById('sim-nom')?.value || 2000000);
+            const ten = parseInt(document.getElementById('sim-ten')?.value || 6);
+            const pokok = Math.round(nom / ten), jasa = Math.round(nom * 0.01);
+            document.getElementById('sim-nom-lbl').textContent = formatRp(nom);
+            document.getElementById('sim-ang').textContent = formatRp(pokok + jasa);
+            document.getElementById('sim-det').textContent = `Pokok ${formatRp(pokok)} + Jasa 1% ${formatRp(jasa)}`;
+        }
+
+        function submitLoan() {
+            const w = getActiveWarga();
+            const nominal = parseInt(document.getElementById('sim-nom').value);
+            const tenor = parseInt(document.getElementById('sim-ten').value);
+            const tujuan = document.getElementById('loan-tujuan').value.trim();
+            if (!tujuan) { showToast('Isi tujuan modal!', 'warning'); return; }
+            const ang = Math.round((nominal / tenor) + (nominal * 0.01));
+            state.pinjamanList.unshift({
+                id: 'PJ-' + String(Date.now()).slice(-4), tanggal: todayISO(),
+                wargaId: w.id, namaWarga: w.nama, wa: w.wa, dusun: w.dusun,
+                nominal, tenor, angsuranPerBulan: ang, sudahBayarBulan: 0,
+                totalTagihan: ang * tenor, terbayar: 0, tujuan, status: 'Menunggu'
+            });
+            syncCloudKey('pinjamanList');
+            renderApp();
+            showToast('Pengajuan pinjaman terkirim ke Admin BUMDes!', 'success');
+        }
+
+        function renderSewa(el, warga) {
+            const myB = state.bookingList.filter(b => b.wargaId === warga.id);
+            el.innerHTML = `
+                <div class="space-y-5">
+                    <div><h2 class="text-xl font-extrabold">Sewa Aset Desa</h2><p class="text-xs text-slate-500">Daftar aset tersinkronisasi langsung dengan data Admin Desa.</p></div>
+                    <div class="grid sm:grid-cols-2 gap-4">
+                        ${state.asetList.map(a => `
+                            <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between">
+                                <div>
+                                    <div class="flex justify-between mb-2">
+                                        <div class="w-11 h-11 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center text-lg"><i class="fa-solid ${a.icon || 'fa-building'}"></i></div>
+                                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${a.status==='Tersedia'?'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-700'}">${a.status}</span>
+                                    </div>
+                                    <h3 class="font-bold text-sm">${a.nama}</h3>
+                                    <p class="text-xs text-slate-500 mt-1">${a.deskripsi}</p>
+                                </div>
+                                <div class="mt-4 pt-3 border-t flex justify-between items-center">
+                                    <p class="font-extrabold text-emerald-600">${formatRp(a.tarif)} <span class="text-xs font-normal text-slate-400">/ ${a.satuan}</span></p>
+                                    <button onclick="openBookModal('${a.id}')" ${a.status!=='Tersedia'?'disabled':''} class="px-4 py-2 rounded-xl text-xs font-bold ${a.status==='Tersedia'?'bg-sky-600 text-white':'bg-slate-200 text-slate-400'}">${a.status==='Tersedia'?'Booking':'Perawatan'}</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+                        <h3 class="font-bold text-sm mb-3">Riwayat Booking Anda</h3>
+                        ${myB.length===0?'<p class="text-xs text-slate-400">Belum ada booking.</p>':myB.map(b=>`
+                            <div class="p-3 rounded-xl bg-slate-50 border flex justify-between items-center mb-2 text-xs">
+                                <div><p class="font-bold">${b.namaAset}</p><p class="text-slate-500">Tgl Pakai: ${b.tanggalPakai} (${b.durasi} hari)</p></div>
+                                <div class="text-right"><p class="font-extrabold text-emerald-700">${formatRp(b.total)}</p><span class="text-[10px] px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 font-bold">${b.status}</span></div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function openBookModal(id) {
+            const a = state.asetList.find(x => x.id === id);
+            openModal('Booking Aset Desa', `
+                <div class="space-y-3">
+                    <div class="p-3 rounded-xl bg-sky-50 border"><p class="font-bold text-sky-900">${a.nama}</p><p class="text-xs text-sky-700">${formatRp(a.tarif)} / ${a.satuan}</p></div>
+                    <input type="date" id="bk-tgl" value="${todayISO()}" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs">
+                    <input type="number" id="bk-dur" min="1" value="1" placeholder="Durasi" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs">
+                </div>
+            `, `
+                <button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-200 text-xs font-bold">Batal</button>
+                <button onclick="saveBooking('${a.id}')" class="px-5 py-2 rounded-xl bg-sky-600 text-white text-xs font-bold">Kirim Booking</button>
+            `);
+        }
+
+        function saveBooking(id) {
+            const w = getActiveWarga();
+            const a = state.asetList.find(x => x.id === id);
+            const durasi = Math.max(1, parseInt(document.getElementById('bk-dur').value) || 1);
+            state.bookingList.unshift({
+                id: 'SW-' + String(Date.now()).slice(-4), wargaId: w.id, namaWarga: w.nama, dusun: w.dusun,
+                namaAset: a.nama, tanggalPakai: document.getElementById('bk-tgl').value,
+                durasi, total: a.tarif * durasi, status: 'Menunggu'
+            });
+            syncCloudKey('bookingList');
+            closeModal(); renderApp();
+            showToast(`Booking ${a.nama} terkirim ke Admin Desa!`, 'success');
+        }
+
+        function renderTransparansi(el) {
+            const t = calcTransparansi();
+            const maxVal = Math.max(1, ...Object.values(t.perUnit));
+            el.innerHTML = `
+                <div class="space-y-5">
+                    <div class="bg-gradient-to-r from-slate-900 to-emerald-900 text-white rounded-3xl p-6 shadow-lg">
+                        <span class="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold uppercase">Transparansi Live</span>
+                        <h2 class="text-xl font-extrabold mt-2">Laporan Keuangan BUMDes Desa Gelanggang</h2>
+                        <p class="text-xs text-slate-300 mt-1">Dihitung otomatis secara langsung dari Buku Kas Pengurus BUMDes.</p>
+                    </div>
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div class="bg-white p-4 rounded-2xl border"><p class="text-[11px] text-slate-500">Saldo Kas</p><p class="text-lg font-extrabold mt-1">${formatRp(t.saldoKas)}</p></div>
+                        <div class="bg-white p-4 rounded-2xl border"><p class="text-[11px] text-slate-500">Pendapatan</p><p class="text-lg font-extrabold text-emerald-600 mt-1">${formatRp(t.pendUsaha)}</p></div>
+                        <div class="bg-white p-4 rounded-2xl border"><p class="text-[11px] text-slate-500">Pengeluaran</p><p class="text-lg font-extrabold text-rose-600 mt-1">${formatRp(t.beban)}</p></div>
+                        <div class="bg-emerald-50 p-4 rounded-2xl border border-emerald-200"><p class="text-[11px] text-emerald-700 font-semibold">Estimasi PADes (30%)</p><p class="text-lg font-extrabold text-emerald-700 mt-1">${formatRp(t.pades)}</p></div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border shadow-sm space-y-3.5">
+                        <h3 class="font-bold text-sm">Pendapatan per Unit Usaha</h3>
+                        ${Object.entries(t.perUnit).map(([k, v]) => `
+                            <div>
+                                <div class="flex justify-between text-xs font-bold mb-1"><span>${k}</span><span class="text-emerald-600">${formatRp(v)}</span></div>
+                                <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-emerald-500 rounded-full" style="width:${Math.round((v/maxVal)*100)}%"></div></div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAspirasi(el, warga) {
+            const myAsp = state.aspirasiList.filter(a => a.wargaId === warga.id);
+            el.innerHTML = `
+                <div class="grid md:grid-cols-12 gap-5">
+                    <div class="md:col-span-5 bg-white rounded-2xl border p-5 shadow-sm h-fit space-y-3">
+                        <h2 class="text-lg font-extrabold">Aspirasi & Pengaduan</h2>
+                        <select id="asp-kat" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"><option value="Usulan Unit Usaha">Usulan Unit Usaha</option><option value="Pelayanan">Saran Pelayanan</option><option value="Pengaduan">Pengaduan Kendala</option></select>
+                        <textarea id="asp-msg" rows="4" placeholder="Tulis pesan Anda..." class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"></textarea>
+                        <button onclick="sendAspirasi()" class="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow">Kirim ke Pengurus Desa</button>
+                    </div>
+                    <div class="md:col-span-7 space-y-3">
+                        <h3 class="font-bold text-sm">Riwayat Aspirasi Anda</h3>
+                        ${myAsp.map(a => `
+                            <div class="bg-white rounded-2xl border p-4 shadow-sm space-y-2 text-xs">
+                                <div class="flex justify-between"><span class="font-bold text-slate-500">${a.kategori} • ${a.tanggal}</span><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${a.status==='Ditanggapi'?'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-700'}">${a.status}</span></div>
+                                <p>${a.pesan}</p>
+                                ${a.tanggapan ? `<div class="p-3 rounded-xl bg-emerald-50 text-emerald-900"><strong>Balasan Pengurus:</strong> ${a.tanggapan}</div>` : '<p class="text-[11px] text-slate-400 italic">Menunggu tanggapan pengurus...</p>'}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function sendAspirasi() {
+            const w = getActiveWarga();
+            const msg = document.getElementById('asp-msg').value.trim();
+            if (!msg) { showToast('Tulis pesan terlebih dahulu!', 'warning'); return; }
+            state.aspirasiList.unshift({
+                id: 'ASP-' + String(Date.now()).slice(-4), tanggal: todayISO(),
+                wargaId: w.id, namaWarga: w.nama,
+                kategori: document.getElementById('asp-kat').value,
+                pesan: msg, status: 'Baru', tanggapan: ''
+            });
+            syncCloudKey('aspirasiList');
+            renderApp();
+            showToast('Aspirasi terkirim ke Admin Desa!', 'success');
+        }
+
+        window.onload = function () {
+            initWargaSelector();
+            updateCartBadge();
+            renderApp();
+            initCloudSync();
+        };
+    </script>
+</body>
+</html>

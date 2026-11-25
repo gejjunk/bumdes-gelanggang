@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0f172a">
+    <title>Admin BUMDes Desa Gelanggang</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Supabase JS v2 SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        tailwind.config = {
+            theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: contain;
+        }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        .fade-in { animation: fadeIn 0.22s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @media print {
+            body * { visibility: hidden; }
+            #print-area, #print-area * { visibility: visible; }
+            #print-area { position: absolute; left: 0; top: 0; width: 100%; background: white; padding: 20px; }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased">
+
+    <!-- GERBANG LOGIN PIN -->
+    <div id="admin-login-gate" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8 text-center fade-in">
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center text-2xl mx-auto mb-4 shadow-lg">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <h1 class="text-xl font-extrabold text-slate-900">Admin & Staff BUMDes</h1>
+            <p class="text-xs text-slate-500 mt-1 mb-2">BUMDes Maju Bersama • Desa Gelanggang</p>
+            <div class="mb-5">
+                <span id="login-cloud-status" class="inline-flex items-center gap-1.5 text-[11px] px-3 py-1 rounded-full bg-amber-100 text-amber-800 font-semibold">
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span> Mode Demo Lokal
+                </span>
+            </div>
+
+            <div class="space-y-4 text-left">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5">Jabatan Petugas</label>
+                    <select id="admin-role-select" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-medium focus:ring-2 focus:ring-emerald-500">
+                        <option value="Direktur BUMDes">Direktur BUMDes (Akses Penuh)</option>
+                        <option value="Bendahara BUMDes">Bendahara BUMDes (Keuangan & Pinjaman)</option>
+                        <option value="Staff Pelayanan & Kasir">Staff Pelayanan & Kasir Toko</option>
+                        <option value="Sekretaris Desa / Pengawas">Sekretaris Desa / Pengawas</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5">PIN Keamanan (4 Angka)</label>
+                    <input type="password" id="admin-pin-input" maxlength="4" inputmode="numeric" placeholder="••••"
+                        onkeydown="if(event.key==='Enter') loginAdmin()"
+                        class="w-full text-center tracking-[0.5em] text-lg font-bold rounded-xl border border-slate-300 px-4 py-2.5 focus:ring-2 focus:ring-emerald-500">
+                    <p class="text-[11px] text-slate-400 mt-1.5 text-center">PIN Awal Default: <span class="font-bold text-slate-700">1234</span></p>
+                </div>
+                <button onclick="loginAdmin()" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-right-to-bracket"></i> Masuk Panel Pengurus
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- WORKSPACE ADMIN -->
+    <div id="admin-workspace" class="hidden flex flex-col lg:flex-row min-h-screen">
+        <!-- Mobile Top Bar -->
+        <header class="lg:hidden sticky top-0 z-30 bg-slate-900 text-white px-4 py-3 flex items-center justify-between shadow">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center"><i class="fa-solid fa-bars"></i></button>
+                <div class="leading-tight">
+                    <p id="mobile-title" class="text-sm font-bold">Dashboard Utama</p>
+                    <p id="mobile-role" class="text-[11px] text-emerald-400">Direktur BUMDes</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="openChangePinModal()" class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center"><i class="fa-solid fa-key text-xs"></i></button>
+                <button onclick="logoutAdmin()" class="px-3 py-1.5 rounded-xl bg-rose-600 text-white text-xs font-bold">Keluar</button>
+            </div>
+        </header>
+
+        <!-- Sidebar -->
+        <aside id="admin-sidebar" class="hidden lg:flex flex-col w-64 bg-slate-900 text-slate-300 shrink-0 lg:sticky lg:top-0 lg:h-screen z-40">
+            <div class="p-5 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-3 overflow-hidden">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0"><i class="fa-solid fa-user-shield"></i></div>
+                    <div class="overflow-hidden">
+                        <p id="sidebar-role" class="text-xs font-bold text-white truncate">Direktur BUMDes</p>
+                        <p id="sidebar-cloud-status" class="text-[10px] text-amber-300 font-semibold">● Mode Lokal</p>
+                    </div>
+                </div>
+                <button onclick="toggleSidebar()" class="lg:hidden text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+                <button onclick="setTab('dashboard')" data-atab="dashboard" class="atab-btn w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition">
+                    <span class="flex items-center gap-3"><i class="fa-solid fa-gauge-high w-4"></i> Dashboard Utama</span>
+                </button>
+                <button onclick="setTab('keuangan')" data-atab="keuangan" class="atab-btn w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition">
+                    <span class="flex items-center gap-3"><i class="fa-solid fa-book-open w-4"></i> Keuangan & PADes</span>
+                </button>
+                <button onclick="setTab('pinjaman')" data-atab="pinjaman" class="atab-btn w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition">
+                    <span class="flex items-center gap-3"><i class="fa-solid fa-hand-holding-dollar w-4"></i> Simpan Pinjam</span>
+                    <span id="badge-pinjaman" class="hidden px-2 py-0.5 text-[10px] rounded-full bg-rose-500 text-white font-bold">0</span>
+                </button>
+                <button onclick="setTab('toko')" data-atab="toko" class="atab-btn w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition">
+                    <span class="flex items-center gap-3"><i class="fa-solid fa-cash-register w-4"></i> Kasir POS & Toko</span>
+                    <span id="badge-pesanan" class="hidden px-2 py-0.5 text-[10px] rounded-full bg-amber-500 text-white font-bold">0</span>
+                </button>
+                <button onclick="setTab('sewa')" data-atab="sewa" class="atab-btn w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition">
+                    <span class="flex items-center gap-3"><i class="fa-solid fa-truck-pickup w-4"></i> Sewa & Aset Desa</span>
+                    <span id="badge-sewa" class="hidden px-2 py-0.5 text-[10px] rounded-full bg-sky-500 text-white font-bold">0</span>
+                </button>
+                <button onclick="setTab('warga')" data-atab="warga" class="atab-btn w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition">
+                    <span class="flex items-center gap-3"><i class="fa-solid fa-address-book w-4"></i> Warga & Aspirasi</span>
+                    <span id="badge-aspirasi" class="hidden px-2 py-0.5 text-[10px] rounded-full bg-purple-500 text-white font-bold">0</span>
+                </button>
+                <button onclick="setTab('darurat')" data-atab="darurat" class="atab-btn w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition">
+                    <span class="flex items-center gap-3"><i class="fa-solid fa-truck-medical w-4"></i> Kontak Darurat</span>
+                </button>
+            </nav>
+
+            <div class="p-4 border-t border-slate-800 space-y-2">
+                <button onclick="openChangePinModal()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-amber-600 text-amber-300 hover:text-white text-xs font-semibold transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-key"></i> Ganti PIN Keamanan
+                </button>
+                <button onclick="logoutAdmin()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white text-xs font-semibold transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-right-from-bracket"></i> Kunci / Keluar
+                </button>
+            </div>
+        </aside>
+
+        <main id="admin-content" class="flex-1 p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto w-full fade-in"></main>
+    </div>
+
+    <!-- MODAL, TOAST & PRINT -->
+    <div id="modal-backdrop" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[88vh] flex flex-col overflow-hidden fade-in">
+            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                <h3 id="modal-title" class="font-bold text-slate-900 text-base">Modal</h3>
+                <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="modal-body" class="p-5 overflow-y-auto text-sm text-slate-700"></div>
+            <div id="modal-footer" class="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex justify-end gap-2"></div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="fixed bottom-6 right-4 z-50 space-y-2 max-w-xs w-full pointer-events-none"></div>
+    <div id="print-area" class="hidden"></div>
+
+    <script>
+        // =========================================================================
+        // 0. KONFIGURASI SUPABASE (SAMAKAN DENGAN FILE apk_warga_gelanggang.html)
+        // =========================================================================
+        const SUPABASE_URL = "https://nndfpovfpwubkhorkoqn.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_ZqIfPDRbS4EemVFDriNaYA_96gjh-C-";
+
+        let supabaseClient = null;
+        let isCloudConnected = false;
+
+        // =========================================================================
+        // 1. STATE & DATA OPERASIONAL ADMIN
+        // =========================================================================
+        const state = {
+            auth: false,
+            role: 'Direktur BUMDes',
+            tab: 'dashboard',
+            tokoSubtab: 'pesanan',
+            posCart: [],
+
+            pins: {
+                'Direktur BUMDes': '1234',
+                'Bendahara BUMDes': '1234',
+                'Staff Pelayanan & Kasir': '1234',
+                'Sekretaris Desa / Pengawas': '1234'
+            },
+
+            wargaList: [
+                { id: 'W001', nama: 'Lalu Ahmad Fauzi', nik: '5203091204880001', dusun: 'Dusun Gelanggang Utara', wa: '6281912345678', status: 'Aktif' },
+                { id: 'W002', nama: 'Baiq Siti Rahmawati', nik: '5203095508910002', dusun: 'Dusun Gelanggang Tengah', wa: '6281987654321', status: 'Aktif' },
+                { id: 'W003', nama: 'H. Muhammad Ridwan', nik: '5203090102750003', dusun: 'Dusun Gelanggang Selatan', wa: '6287811223344', status: 'Aktif' },
+                { id: 'W004', nama: 'Nurul Hidayah', nik: '5203094409950004', dusun: 'Dusun Montong Baru', wa: '6285233445566', status: 'Aktif' }
+            ],
+
+            produkList: [
+                { id: 'P01', nama: 'Beras Premium Gelanggang 5kg', kategori: 'Sembako', harga: 72000, stok: 45, satuan: 'Karung', icon: 'fa-wheat-awn', color: 'amber' },
+                { id: 'P02', nama: 'Pupuk NPK Phonska 50kg', kategori: 'Pertanian', harga: 145000, stok: 28, satuan: 'Sak', icon: 'fa-seedling', color: 'emerald' },
+                { id: 'P03', nama: 'Gas LPG 3kg (Subsidi)', kategori: 'Sembako', harga: 20000, stok: 35, satuan: 'Tabung', icon: 'fa-fire-flame-simple', color: 'sky' },
+                { id: 'P04', nama: 'Minyak Goreng Kemasan 1L', kategori: 'Sembako', harga: 17500, stok: 60, satuan: 'Pouch', icon: 'fa-bottle-droplet', color: 'yellow' },
+                { id: 'P05', nama: 'Kopi Bubuk UMKM Gelanggang 250g', kategori: 'UMKM Lokal', harga: 35000, stok: 22, satuan: 'Bungkus', icon: 'fa-mug-hot', color: 'orange' }
+            ],
+
+            pesananList: [
+                {
+                    id: 'ORD-101', tanggal: '2026-11-24', wargaId: 'W002', namaWarga: 'Baiq Siti Rahmawati', dusun: 'Dusun Gelanggang Tengah',
+                    items: [{ id: 'P01', nama: 'Beras Premium Gelanggang 5kg', qty: 2, harga: 72000 }],
+                    total: 144000, pengiriman: 'Antar ke Dusun', pembayaran: 'COD', status: 'Menunggu'
+                }
+            ],
+
+            pinjamanList: [
+                {
+                    id: 'PJ-201', tanggal: '2026-10-10', wargaId: 'W001', namaWarga: 'Lalu Ahmad Fauzi', wa: '6281912345678', dusun: 'Dusun Gelanggang Utara',
+                    nominal: 3000000, tenor: 6, angsuranPerBulan: 530000, sudahBayarBulan: 2,
+                    totalTagihan: 3180000, terbayar: 1060000, tujuan: 'Modal bibit padi & olah sawah', status: 'Aktif'
+                },
+                {
+                    id: 'PJ-202', tanggal: '2026-11-24', wargaId: 'W003', namaWarga: 'H. Muhammad Ridwan', wa: '6287811223344', dusun: 'Dusun Gelanggang Selatan',
+                    nominal: 5000000, tenor: 10, angsuranPerBulan: 550000, sudahBayarBulan: 0,
+                    totalTagihan: 5500000, terbayar: 0, tujuan: 'Pengembangan warung sembako', status: 'Menunggu'
+                }
+            ],
+
+            asetList: [
+                { id: 'A01', nama: 'Paket Tenda Hajatan + 100 Kursi', tarif: 350000, satuan: 'Hari', status: 'Tersedia', deskripsi: 'Termasuk pemasangan & bongkar di wilayah desa.', icon: 'fa-tent' },
+                { id: 'A02', nama: 'Hand Tractor (Traktor Tangan)', tarif: 200000, satuan: 'Hari', status: 'Tersedia', deskripsi: 'Kondisi prima untuk bajak sawah, belum termasuk BBM.', icon: 'fa-tractor' },
+                { id: 'A03', nama: 'Mobil Pick-Up Angkut Hasil Bumi', tarif: 150000, satuan: 'Rit / Hari', status: 'Tersedia', deskripsi: 'Kapasitas 1 ton untuk angkut hasil panen.', icon: 'fa-truck-pickup' },
+                { id: 'A04', nama: 'Sound System & Genset Desa', tarif: 250000, satuan: 'Hari', status: 'Tersedia', deskripsi: 'Untuk hajatan, pengajian, atau rapat dusun.', icon: 'fa-volume-high' }
+            ],
+
+            bookingList: [
+                {
+                    id: 'SW-301', tanggalPakai: '2026-11-28', durasi: 2, namaAset: 'Paket Tenda Hajatan + 100 Kursi',
+                    wargaId: 'W004', namaWarga: 'Nurul Hidayah', dusun: 'Dusun Montong Baru', total: 700000, status: 'Menunggu'
+                }
+            ],
+
+            transaksiKas: [
+                { id: 'KAS-001', tanggal: '2026-11-01', jenis: 'Masuk', unit: 'Modal Desa', nominal: 50000000, keterangan: 'Saldo Awal Kas BUMDes Bulan November' },
+                { id: 'KAS-002', tanggal: '2026-11-05', jenis: 'Masuk', unit: 'Simpan Pinjam', nominal: 530000, keterangan: 'Angsuran ke-1 PJ-201 (Lalu Ahmad Fauzi)' },
+                { id: 'KAS-003', tanggal: '2026-11-10', jenis: 'Keluar', unit: 'Toko UMKM', nominal: 4500000, keterangan: 'Kulakan stok beras & pupuk NPK' },
+                { id: 'KAS-004', tanggal: '2026-11-15', jenis: 'Masuk', unit: 'Sewa Aset', nominal: 1200000, keterangan: 'Pendapatan sewa traktor & pick-up' },
+                { id: 'KAS-005', tanggal: '2026-11-20', jenis: 'Keluar', unit: 'Operasional', nominal: 850000, keterangan: 'Listrik kios, servis traktor & ATK' }
+            ],
+
+            aspirasiList: [
+                { id: 'ASP-02', tanggal: '2026-11-24', wargaId: 'W002', namaWarga: 'Baiq Siti Rahmawati', kategori: 'Pelayanan', pesan: 'Apakah produk kue kering UMKM PKK bisa ikut dijual di Toko BUMDes?', status: 'Baru', tanggapan: '' }
+            ],
+
+            kontakDarurat: [
+                { id: 'DR-01', nama: 'Ambulans Desa Gelanggang', petugas: 'Unit Siaga Kesehatan Desa (24 Jam)', telp: '081912340118', wa: '6281912340118', icon: 'fa-truck-medical', color: 'rose' },
+                { id: 'DR-02', nama: 'Pemadam Kebakaran (Damkar)', petugas: 'Pos Damkar & Penyelamatan (113)', telp: '113', wa: '6281912340113', icon: 'fa-fire-extinguisher', color: 'orange' },
+                { id: 'DR-03', nama: 'Tenaga Medis / Bidan Desa', petugas: 'Polindes & Pustu Desa Gelanggang', telp: '081912340119', wa: '6281912340119', icon: 'fa-user-nurse', color: 'emerald' }
+            ]
+        };
+
+        // =========================================================================
+        // 2. MESIN SINKRONISASI CLOUD (SUPABASE POSTGRESQL + REALTIME)
+        // =========================================================================
+        const CLOUD_KEYS = ['pins', 'wargaList', 'produkList', 'pesananList', 'pinjamanList', 'asetList', 'bookingList', 'transaksiKas', 'aspirasiList', 'kontakDarurat'];
+
+        async function initCloudSync() {
+            const configured = SUPABASE_URL && !SUPABASE_URL.includes('GANTI_DENGAN_') && SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes('GANTI_DENGAN_');
+            if (!configured || typeof window.supabase === 'undefined') {
+                setCloudStatusUI(false);
+                return;
+            }
+            try {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+                const { data, error } = await supabaseClient.from('bumdes_store').select('key, value');
+                if (error) {
+                    console.error('Supabase fetch error:', error);
+                    setCloudStatusUI(false);
+                    showToast('Koneksi Supabase gagal. Cek URL, Key, atau tabel bumdes_store.', 'error');
+                    return;
+                }
+
+                isCloudConnected = true;
+                setCloudStatusUI(true);
+
+                if (!data || data.length === 0) {
+                    const rows = CLOUD_KEYS.map(k => ({ key: k, value: state[k] }));
+                    await supabaseClient.from('bumdes_store').upsert(rows, { onConflict: 'key' });
+                } else {
+                    data.forEach(row => {
+                        if (row.key === 'pins' && row.value) {
+                            state.pins = { ...state.pins, ...row.value };
+                        } else if (CLOUD_KEYS.includes(row.key) && row.value !== null && row.value !== undefined) {
+                            state[row.key] = row.value;
+                        }
+                    });
+                    if (state.auth) renderApp();
+                }
+
+                supabaseClient
+                    .channel('bumdes-admin-realtime')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'bumdes_store' }, (payload) => {
+                        if (payload.new && CLOUD_KEYS.includes(payload.new.key)) {
+                            if (payload.new.key === 'pins') {
+                                state.pins = { ...state.pins, ...payload.new.value };
+                            } else {
+                                state[payload.new.key] = payload.new.value;
+                            }
+                            if (state.auth) renderApp();
+                        }
+                    })
+                    .subscribe();
+
+            } catch (e) {
+                console.error(e);
+                setCloudStatusUI(false);
+            }
+        }
+
+        async function syncCloudKey(key) {
+            if (supabaseClient && isCloudConnected) {
+                const { error } = await supabaseClient
+                    .from('bumdes_store')
+                    .upsert({ key: key, value: state[key], updated_at: new Date().toISOString() }, { onConflict: 'key' });
+                if (error) {
+                    console.error('Gagal sync ke Supabase:', error);
+                    showToast('Gagal menyimpan ke Supabase!', 'error');
+                }
+            }
+        }
+
+        function setCloudStatusUI(online) {
+            const lBadge = document.getElementById('login-cloud-status');
+            const sBadge = document.getElementById('sidebar-cloud-status');
+            if (online) {
+                if (lBadge) { lBadge.className = 'inline-flex items-center gap-1.5 text-[11px] px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 font-semibold'; lBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Terhubung Supabase (Online)'; }
+                if (sBadge) { sBadge.className = 'text-[10px] text-emerald-400 font-semibold'; sBadge.textContent = '● Supabase Online'; }
+            } else {
+                if (lBadge) { lBadge.className = 'inline-flex items-center gap-1.5 text-[11px] px-3 py-1 rounded-full bg-amber-100 text-amber-800 font-semibold'; lBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-500"></span> Mode Demo Lokal'; }
+                if (sBadge) { sBadge.className = 'text-[10px] text-amber-300 font-semibold'; sBadge.textContent = '● Mode Lokal'; }
+            }
+        }
+
+        // =========================================================================
+        // 3. HELPER FUNCTIONS & AUTENTIKASI PIN
+        // =========================================================================
+        const formatRp = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num || 0);
+        const todayISO = () => new Date().toISOString().split('T')[0];
+
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const colors = { success: 'bg-emerald-600 text-white', info: 'bg-slate-800 text-white', warning: 'bg-amber-500 text-white', error: 'bg-rose-600 text-white' };
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto px-4 py-3 rounded-2xl shadow-xl text-xs font-semibold fade-in ${colors[type] || colors.info}`;
+            toast.textContent = msg;
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 3000);
+        }
+
+        function openModal(title, body, footer = '') {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-body').innerHTML = body;
+            document.getElementById('modal-footer').innerHTML = footer || `<button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-200 text-xs font-bold">Tutup</button>`;
+            document.getElementById('modal-backdrop').classList.remove('hidden');
+        }
+        function closeModal() { document.getElementById('modal-backdrop').classList.add('hidden'); }
+
+        function loginAdmin() {
+            const role = document.getElementById('admin-role-select').value;
+            const pin = document.getElementById('admin-pin-input').value.trim();
+            if (pin === (state.pins[role] || '1234')) {
+                state.auth = true;
+                state.role = role;
+                document.getElementById('admin-pin-input').value = '';
+                document.getElementById('sidebar-role').textContent = role;
+                document.getElementById('mobile-role').textContent = role;
+                showToast(`Selamat datang, ${role}!`, 'success');
+                renderApp();
+            } else {
+                showToast(`PIN untuk ${role} salah!`, 'error');
+            }
+        }
+
+        function logoutAdmin() { state.auth = false; showToast('Panel Admin dikunci', 'info'); renderApp(); }
+
+        function openChangePinModal() {
+            const isDir = state.role === 'Direktur BUMDes';
+            const roles = Object.keys(state.pins);
+            openModal('Ganti PIN Keamanan', `
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold mb-1">Jabatan</label>
+                        ${isDir ? `<select id="pin-role" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold">${roles.map(r=>`<option value="${r}" ${r===state.role?'selected':''}>${r}</option>`).join('')}</select>`
+                                : `<input id="pin-role" value="${state.role}" readonly class="w-full rounded-xl border bg-slate-100 px-3 py-2 text-xs font-semibold">`}
+                    </div>
+                    <div><label class="block text-xs font-bold mb-1">PIN Lama</label><input type="password" id="pin-old" maxlength="4" inputmode="numeric" class="w-full text-center tracking-[0.4em] font-bold rounded-xl border border-slate-300 px-3 py-2 text-sm"></div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div><label class="block text-xs font-bold mb-1">PIN Baru (4 Angka)</label><input type="password" id="pin-new" maxlength="4" inputmode="numeric" class="w-full text-center tracking-[0.4em] font-bold rounded-xl border border-slate-300 px-3 py-2 text-sm"></div>
+                        <div><label class="block text-xs font-bold mb-1">Ulangi PIN Baru</label><input type="password" id="pin-cfm" maxlength="4" inputmode="numeric" class="w-full text-center tracking-[0.4em] font-bold rounded-xl border border-slate-300 px-3 py-2 text-sm"></div>
+                    </div>
+                </div>
+            `, `
+                <button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-200 text-xs font-bold">Batal</button>
+                <button onclick="saveNewPin()" class="px-5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">Simpan PIN</button>
+            `);
+        }
+
+        function saveNewPin() {
+            const r = document.getElementById('pin-role').value;
+            const oldP = document.getElementById('pin-old').value.trim();
+            const newP = document.getElementById('pin-new').value.trim();
+            const cfmP = document.getElementById('pin-cfm').value.trim();
+            if (oldP !== state.pins[r]) { showToast('PIN lama salah!', 'error'); return; }
+            if (!/^\d{4}$/.test(newP)) { showToast('PIN baru harus 4 angka!', 'warning'); return; }
+            if (newP !== cfmP) { showToast('Konfirmasi PIN tidak cocok!', 'warning'); return; }
+            state.pins[r] = newP;
+            syncCloudKey('pins');
+            closeModal();
+            showToast(`PIN ${r} berhasil diubah & tersimpan!`, 'success');
+        }
+
+        function toggleSidebar() {
+            const sb = document.getElementById('admin-sidebar');
+            sb.classList.toggle('hidden'); sb.classList.toggle('fixed'); sb.classList.toggle('inset-y-0'); sb.classList.toggle('left-0');
+        }
+
+        function setTab(t) {
+            state.tab = t;
+            if (window.innerWidth < 1024) document.getElementById('admin-sidebar').classList.add('hidden');
+            renderApp(); window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function calcFinance() {
+            let masuk = 0, keluar = 0, pendUsaha = 0, beban = 0;
+            state.transaksiKas.forEach(t => {
+                if (t.jenis === 'Masuk') { masuk += t.nominal; if (t.unit !== 'Modal Desa') pendUsaha += t.nominal; }
+                else { keluar += t.nominal; beban += t.nominal; }
+            });
+            const saldo = masuk - keluar, laba = Math.max(0, pendUsaha - beban);
+            const piutang = state.pinjamanList.filter(p => p.status === 'Aktif').reduce((s, p) => s + (p.totalTagihan - p.terbayar), 0);
+            return { saldo, pendUsaha, beban, laba, piutang, pades: Math.round(laba * 0.30), modal: Math.round(laba * 0.40), pengurus: Math.round(laba * 0.20), sosial: Math.round(laba * 0.10) };
+        }
+
+        function updateBadges() {
+            const setB = (id, n) => { const e = document.getElementById(id); if (!e) return; e.textContent = n; e.classList.toggle('hidden', n === 0); };
+            setB('badge-pinjaman', state.pinjamanList.filter(p => p.status === 'Menunggu').length);
+            setB('badge-pesanan', state.pesananList.filter(o => o.status === 'Menunggu').length);
+            setB('badge-sewa', state.bookingList.filter(b => b.status === 'Menunggu').length);
+            setB('badge-aspirasi', state.aspirasiList.filter(a => a.status === 'Baru').length);
+        }
+
+        // =========================================================================
+        // 4. RENDER HALAMAN ADMIN
+        // =========================================================================
+        function renderApp() {
+            document.getElementById('admin-login-gate').classList.toggle('hidden', state.auth);
+            document.getElementById('admin-workspace').classList.toggle('hidden', !state.auth);
+            if (!state.auth) return;
+
+            updateBadges();
+            document.querySelectorAll('.atab-btn').forEach(btn => {
+                const act = btn.dataset.atab === state.tab;
+                btn.className = act ? 'atab-btn w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition bg-emerald-600 text-white shadow' : 'atab-btn w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-slate-300 hover:bg-slate-800 hover:text-white';
+            });
+            const titles = { dashboard: 'Dashboard Utama', keuangan: 'Keuangan & PADes', pinjaman: 'Simpan Pinjam', toko: 'Kasir POS & Toko', sewa: 'Sewa & Aset Desa', warga: 'Warga & Aspirasi', darurat: 'Kontak Darurat Desa' };
+            document.getElementById('mobile-title').textContent = titles[state.tab];
+
+            const el = document.getElementById('admin-content');
+            if (state.tab === 'dashboard') renderDashboard(el);
+            else if (state.tab === 'keuangan') renderKeuangan(el);
+            else if (state.tab === 'pinjaman') renderPinjaman(el);
+            else if (state.tab === 'toko') renderToko(el);
+            else if (state.tab === 'sewa') renderSewa(el);
+            else if (state.tab === 'warga') renderWarga(el);
+            else if (state.tab === 'darurat') renderDarurat(el);
+        }
+
+        function renderDashboard(el) {
+            const f = calcFinance();
+            const pending = state.pinjamanList.filter(p=>p.status==='Menunggu').length + state.pesananList.filter(o=>o.status==='Menunggu').length + state.bookingList.filter(b=>b.status==='Menunggu').length;
+            el.innerHTML = `
+                <div class="space-y-6">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div><h1 class="text-2xl font-extrabold text-slate-900">Dashboard Pengurus BUMDes</h1><p class="text-xs text-slate-500">Kontrol penuh operasional BUMDes Desa Gelanggang.</p></div>
+                        <div class="flex gap-2">
+                            <button onclick="openKasModal()" class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow"><i class="fa-solid fa-plus mr-1"></i> Catat Kas</button>
+                            <button onclick="printLaporan()" class="px-4 py-2 rounded-xl bg-white border border-slate-300 text-xs font-bold"><i class="fa-solid fa-print mr-1"></i> Cetak</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-white p-4 rounded-2xl border shadow-sm"><p class="text-xs text-slate-500">Saldo Kas BUMDes</p><p class="text-xl font-extrabold mt-1">${formatRp(f.saldo)}</p></div>
+                        <div class="bg-white p-4 rounded-2xl border shadow-sm"><p class="text-xs text-slate-500">Pendapatan Usaha</p><p class="text-xl font-extrabold text-emerald-600 mt-1">${formatRp(f.pendUsaha)}</p></div>
+                        <div class="bg-white p-4 rounded-2xl border shadow-sm"><p class="text-xs text-slate-500">Piutang Aktif</p><p class="text-xl font-extrabold text-amber-600 mt-1">${formatRp(f.piutang)}</p></div>
+                        <div class="bg-white p-4 rounded-2xl border ${pending>0?'border-rose-300 bg-rose-50/40':''} shadow-sm"><p class="text-xs text-slate-500">Perlu Verifikasi</p><p class="text-xl font-extrabold text-rose-600 mt-1">${pending} Antrean</p></div>
+                    </div>
+                    <div class="bg-white rounded-2xl border p-5 shadow-sm">
+                        <h3 class="font-bold text-sm mb-3">Transaksi Kas Terakhir</h3>
+                        <div class="space-y-2">
+                            ${state.transaksiKas.slice(0, 6).map(t => `
+                                <div class="flex justify-between items-center p-2.5 rounded-xl bg-slate-50 text-xs">
+                                    <div><p class="font-bold">${t.keterangan}</p><p class="text-[11px] text-slate-400">${t.tanggal} • ${t.unit}</p></div>
+                                    <span class="font-extrabold ${t.jenis==='Masuk'?'text-emerald-600':'text-rose-600'}">${t.jenis==='Masuk'?'+':'-'}${formatRp(t.nominal)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderKeuangan(el) {
+            const f = calcFinance();
+            el.innerHTML = `
+                <div class="space-y-5">
+                    <div class="flex flex-wrap justify-between items-center gap-3">
+                        <h1 class="text-xl font-extrabold">Buku Kas & Bagi Hasil (PADes)</h1>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="openKasModal()" class="px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">+ Catat Kas</button>
+                            <button onclick="exportCSV()" class="px-3.5 py-2 rounded-xl bg-slate-800 text-white text-xs font-bold"><i class="fa-solid fa-file-excel mr-1"></i> Excel (CSV)</button>
+                            <button onclick="printLaporan()" class="px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-xs font-bold"><i class="fa-solid fa-print mr-1"></i> Cetak PDF</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                        <div class="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200"><p class="text-emerald-700 font-semibold">PADes (30%)</p><p class="text-lg font-extrabold text-emerald-800">${formatRp(f.pades)}</p></div>
+                        <div class="p-3.5 rounded-xl bg-sky-50 border border-sky-200"><p class="text-sky-700 font-semibold">Tambah Modal (40%)</p><p class="text-lg font-extrabold text-sky-800">${formatRp(f.modal)}</p></div>
+                        <div class="p-3.5 rounded-xl bg-amber-50 border border-amber-200"><p class="text-amber-700 font-semibold">Pengurus (20%)</p><p class="text-lg font-extrabold text-amber-800">${formatRp(f.pengurus)}</p></div>
+                        <div class="p-3.5 rounded-xl bg-purple-50 border border-purple-200"><p class="text-purple-700 font-semibold">Dana Sosial (10%)</p><p class="text-lg font-extrabold text-purple-800">${formatRp(f.sosial)}</p></div>
+                    </div>
+                    <div class="bg-white rounded-2xl border overflow-x-auto shadow-sm">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-50 text-slate-500 uppercase text-[10px]"><tr><th class="px-4 py-3">Tanggal</th><th class="px-4 py-3">Unit</th><th class="px-4 py-3">Keterangan</th><th class="px-4 py-3 text-right">Nominal</th></tr></thead>
+                            <tbody class="divide-y divide-slate-100">
+                                ${state.transaksiKas.map(t => `
+                                    <tr>
+                                        <td class="px-4 py-3 text-slate-500 whitespace-nowrap">${t.tanggal}</td>
+                                        <td class="px-4 py-3"><span class="px-2 py-0.5 rounded bg-slate-100 font-semibold">${t.unit}</span></td>
+                                        <td class="px-4 py-3 font-medium">${t.keterangan}</td>
+                                        <td class="px-4 py-3 text-right font-extrabold whitespace-nowrap ${t.jenis==='Masuk'?'text-emerald-600':'text-rose-600'}">${t.jenis==='Masuk'?'+':'-'}${formatRp(t.nominal)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function openKasModal() {
+            openModal('Catat Transaksi Kas', `
+                <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <select id="k-jenis" class="rounded-xl border border-slate-300 px-3 py-2 text-xs"><option value="Masuk">Kas Masuk (+)</option><option value="Keluar">Kas Keluar (-)</option></select>
+                        <select id="k-unit" class="rounded-xl border border-slate-300 px-3 py-2 text-xs"><option value="Toko UMKM">Toko UMKM</option><option value="Simpan Pinjam">Simpan Pinjam</option><option value="Sewa Aset">Sewa Aset</option><option value="Operasional">Operasional</option></select>
+                    </div>
+                    <input type="number" id="k-nom" placeholder="Nominal (Rp)" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs">
+                    <input type="text" id="k-ket" placeholder="Keterangan transaksi..." class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs">
+                </div>
+            `, `
+                <button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-200 text-xs font-bold">Batal</button>
+                <button onclick="saveKas()" class="px-5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">Simpan</button>
+            `);
+        }
+
+        function saveKas() {
+            const nom = parseInt(document.getElementById('k-nom').value);
+            const ket = document.getElementById('k-ket').value.trim();
+            if (!nom || !ket) { showToast('Lengkapi nominal & keterangan!', 'warning'); return; }
+            state.transaksiKas.unshift({ id: 'KAS-' + String(Date.now()).slice(-4), tanggal: todayISO(), jenis: document.getElementById('k-jenis').value, unit: document.getElementById('k-unit').value, nominal: nom, keterangan: ket });
+            syncCloudKey('transaksiKas');
+            closeModal(); renderApp(); showToast('Transaksi dicatat & tersinkronisasi!', 'success');
+        }
+
+        function exportCSV() {
+            let csv = 'Tanggal,Jenis,Unit,Nominal,Keterangan\n';
+            state.transaksiKas.forEach(t => csv += `${t.tanggal},${t.jenis},"${t.unit}",${t.nominal},"${t.keterangan}"\n`);
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+            a.download = `Buku_Kas_BUMDes_Gelanggang_${todayISO()}.csv`;
+            a.click();
+        }
+
+        function printLaporan() {
+            const f = calcFinance();
+            const p = document.getElementById('print-area');
+            p.innerHTML = `<div style="font-family:Inter,sans-serif;"><h2 style="text-align:center;margin:0;">BUMDes MAJU BERSAMA — DESA GELANGGANG</h2><p style="text-align:center;font-size:12px;">Laporan Keuangan (${todayISO()}) • ${state.role}</p><hr><p>Saldo Kas: <strong>${formatRp(f.saldo)}</strong> | Estimasi PADes (30%): <strong>${formatRp(f.pades)}</strong></p><table style="width:100%;border-collapse:collapse;font-size:11px;" border="1"><tr><th>Tanggal</th><th>Unit</th><th>Keterangan</th><th>Nominal</th></tr>${state.transaksiKas.map(t=>`<tr><td>${t.tanggal}</td><td>${t.unit}</td><td>${t.keterangan}</td><td style="text-align:right;">${t.jenis==='Masuk'?'+':'-'}${formatRp(t.nominal)}</td></tr>`).join('')}</table></div>`;
+            p.classList.remove('hidden'); window.print(); p.classList.add('hidden');
+        }
+
+        function renderPinjaman(el) {
+            el.innerHTML = `
+                <div class="space-y-4">
+                    <h1 class="text-xl font-extrabold">Unit Simpan Pinjam</h1>
+                    ${state.pinjamanList.map(l => `
+                        <div class="bg-white rounded-2xl border ${l.status==='Menunggu'?'border-amber-300':'border-slate-200'} p-5 shadow-sm">
+                            <div class="flex flex-wrap justify-between gap-2">
+                                <div><p class="font-extrabold text-sm">${l.namaWarga} (${l.id})</p><p class="text-xs text-slate-500">${l.dusun} • "${l.tujuan}"</p></div>
+                                <div class="text-right"><p class="font-extrabold text-emerald-700">${formatRp(l.nominal)}</p><p class="text-[11px] text-slate-500">${formatRp(l.angsuranPerBulan)} x ${l.tenor} bln</p></div>
+                            </div>
+                            <div class="mt-3 pt-3 border-t flex flex-wrap justify-between items-center gap-2 text-xs">
+                                <span>Terbayar: <strong>${l.sudahBayarBulan}/${l.tenor} bln</strong> • Status: <strong class="text-emerald-700">${l.status}</strong></span>
+                                <div class="flex gap-2">
+                                    ${l.status==='Menunggu'?`<button onclick="approveLoan('${l.id}')" class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold">Setujui & Cairkan</button>`:''}
+                                    ${l.status==='Aktif'?`<button onclick="payLoan('${l.id}')" class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold">Catat Angsuran</button><a target="_blank" href="https://wa.me/${l.wa}?text=${encodeURIComponent(`Assalamualaikum Bpk/Ibu ${l.namaWarga}, pengingat angsuran BUMDes Gelanggang (${l.id}) sebesar ${formatRp(l.angsuranPerBulan)}.`)}" class="px-3 py-1.5 rounded-xl bg-green-100 text-green-800 font-bold"><i class="fa-brands fa-whatsapp"></i> WA</a>`:''}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function approveLoan(id) {
+            const l = state.pinjamanList.find(x => x.id === id);
+            l.status = 'Aktif';
+            state.transaksiKas.unshift({ id: 'KAS-' + String(Date.now()).slice(-4), tanggal: todayISO(), jenis: 'Keluar', unit: 'Simpan Pinjam', nominal: l.nominal, keterangan: `Pencairan ${l.id} (${l.namaWarga})` });
+            syncCloudKey('pinjamanList'); syncCloudKey('transaksiKas');
+            renderApp(); showToast('Pinjaman dicairkan & dicatat di Kas!', 'success');
+        }
+
+        function payLoan(id) {
+            const l = state.pinjamanList.find(x => x.id === id);
+            l.sudahBayarBulan++; l.terbayar += l.angsuranPerBulan;
+            if (l.sudahBayarBulan >= l.tenor) { l.status = 'Lunas'; l.terbayar = l.totalTagihan; }
+            state.transaksiKas.unshift({ id: 'KAS-' + String(Date.now()).slice(-4), tanggal: todayISO(), jenis: 'Masuk', unit: 'Simpan Pinjam', nominal: l.angsuranPerBulan, keterangan: `Angsuran ke-${l.sudahBayarBulan} ${l.id} (${l.namaWarga})` });
+            syncCloudKey('pinjamanList'); syncCloudKey('transaksiKas');
+            renderApp(); showToast('Angsuran dicatat masuk Kas!', 'success');
+        }
+
+        function renderToko(el) {
+            const s = state.tokoSubtab;
+            el.innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex flex-wrap justify-between items-center gap-2">
+                        <h1 class="text-xl font-extrabold">Kasir POS & Toko Desa</h1>
+                        <div class="flex bg-white p-1 rounded-xl border">
+                            <button onclick="state.tokoSubtab='pesanan';renderApp()" class="px-3 py-1.5 rounded-lg text-xs font-bold ${s==='pesanan'?'bg-emerald-600 text-white':'text-slate-600'}">Pesanan</button>
+                            <button onclick="state.tokoSubtab='pos';renderApp()" class="px-3 py-1.5 rounded-lg text-xs font-bold ${s==='pos'?'bg-emerald-600 text-white':'text-slate-600'}">Kasir POS</button>
+                            <button onclick="state.tokoSubtab='stok';renderApp()" class="px-3 py-1.5 rounded-lg text-xs font-bold ${s==='stok'?'bg-emerald-600 text-white':'text-slate-600'}">Stok</button>
+                        </div>
+                    </div>
+                    <div id="toko-body"></div>
+                </div>
+            `;
+            const b = document.getElementById('toko-body');
+            if (s === 'pesanan') {
+                b.innerHTML = state.pesananList.map(o => `
+                    <div class="bg-white rounded-2xl border p-4 mb-3 flex flex-wrap justify-between items-center gap-3">
+                        <div class="text-xs"><p class="font-extrabold text-sm">${o.id} • ${o.namaWarga}</p><p class="text-slate-600">${o.items.map(i=>`${i.nama} (${i.qty}x)`).join(', ')}</p><p class="text-slate-400">${o.dusun} • ${o.pengiriman}</p></div>
+                        <div class="flex items-center gap-3"><span class="font-extrabold text-emerald-700">${formatRp(o.total)}</span>
+                        ${o.status!=='Selesai'?`<button onclick="doneOrder('${o.id}')" class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold">Selesai & Masuk Kas</button>`:'<span class="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">Selesai</span>'}</div>
+                    </div>
+                `).join('');
+            } else if (s === 'pos') {
+                const tot = state.posCart.reduce((x, i) => x + (i.harga * i.qty), 0);
+                b.innerHTML = `
+                    <div class="grid lg:grid-cols-12 gap-4">
+                        <div class="lg:col-span-7 grid sm:grid-cols-2 gap-3 h-fit">
+                            ${state.produkList.map(p => `<button onclick="addPos('${p.id}')" class="bg-white border hover:border-emerald-500 p-3.5 rounded-2xl text-left flex justify-between items-center"><div><p class="font-bold text-xs">${p.nama}</p><p class="font-extrabold text-emerald-600 text-sm">${formatRp(p.harga)}</p><p class="text-[10px] text-slate-400">Stok: ${p.stok}</p></div><i class="fa-solid fa-plus text-emerald-600"></i></button>`).join('')}
+                        </div>
+                        <div class="lg:col-span-5 bg-white rounded-2xl border p-4 h-fit">
+                            <h3 class="font-bold text-sm mb-3">Keranjang Kasir</h3>
+                            ${state.posCart.length===0?'<p class="text-xs text-slate-400 text-center py-6">Pilih produk di kiri.</p>':`
+                                ${state.posCart.map((i,idx)=>`<div class="flex justify-between text-xs py-1.5 border-b"><span>${i.nama} x${i.qty}</span><button onclick="state.posCart.splice(${idx},1);renderApp()" class="text-rose-500"><i class="fa-solid fa-trash"></i></button></div>`).join('')}
+                                <div class="flex justify-between font-extrabold text-base my-3"><span>Total</span><span class="text-emerald-600">${formatRp(tot)}</span></div>
+                                <button onclick="payPos()" class="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold">Bayar & Masuk Kas</button>
+                            `}
+                        </div>
+                    </div>
+                `;
+            } else {
+                b.innerHTML = `
+                    <div class="bg-white rounded-2xl border p-4 overflow-x-auto">
+                        <div class="flex justify-between items-center mb-3"><h3 class="font-bold text-sm">Stok Kios BUMDes</h3><button onclick="openAddProdModal()" class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold">+ Tambah Produk</button></div>
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-50 text-slate-500 uppercase text-[10px]"><tr><th class="p-2.5">Produk</th><th class="p-2.5">Harga</th><th class="p-2.5">Stok</th><th class="p-2.5 text-right">Aksi</th></tr></thead>
+                            <tbody class="divide-y">${state.produkList.map(p=>`<tr><td class="p-2.5 font-bold">${p.nama}</td><td class="p-2.5">${formatRp(p.harga)}</td><td class="p-2.5 font-bold">${p.stok} ${p.satuan}</td><td class="p-2.5 text-right"><button onclick="pRestock('${p.id}')" class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold">+10</button></td></tr>`).join('')}</tbody>
+                        </table>
+                    </div>
+                `;
+            }
+        }
+
+        function doneOrder(id) {
+            const o = state.pesananList.find(x => x.id === id);
+            o.status = 'Selesai';
+            o.items.forEach(i => { const p = state.produkList.find(x => x.id === i.id); if (p) p.stok = Math.max(0, p.stok - i.qty); });
+            state.transaksiKas.unshift({ id: 'KAS-' + String(Date.now()).slice(-4), tanggal: todayISO(), jenis: 'Masuk', unit: 'Toko UMKM', nominal: o.total, keterangan: `Pesanan ${o.id} (${o.namaWarga})` });
+            syncCloudKey('pesananList'); syncCloudKey('produkList'); syncCloudKey('transaksiKas');
+            renderApp(); showToast('Pesanan selesai & masuk Kas!', 'success');
+        }
+        function addPos(id) { const p = state.produkList.find(x => x.id === id); if (!p || p.stok <= 0) return; const e = state.posCart.find(i => i.id === id); e ? e.qty++ : state.posCart.push({ id: p.id, nama: p.nama, harga: p.harga, qty: 1 }); renderApp(); }
+        function payPos() {
+            const tot = state.posCart.reduce((s, i) => s + (i.harga * i.qty), 0);
+            state.posCart.forEach(i => { const p = state.produkList.find(x => x.id === i.id); if (p) p.stok = Math.max(0, p.stok - i.qty); });
+            state.transaksiKas.unshift({ id: 'KAS-' + String(Date.now()).slice(-4), tanggal: todayISO(), jenis: 'Masuk', unit: 'Toko UMKM', nominal: tot, keterangan: `Penjualan Kasir POS (${state.posCart.length} item)` });
+            state.posCart = [];
+            syncCloudKey('produkList'); syncCloudKey('transaksiKas');
+            renderApp(); showToast('Transaksi POS berhasil!', 'success');
+        }
+        function pRestock(id) { const p = state.produkList.find(x => x.id === id); p.stok += 10; syncCloudKey('produkList'); renderApp(); showToast(`Stok ${p.nama} +10`, 'success'); }
+        function openAddProdModal() {
+            openModal('Tambah Produk Toko', `
+                <div class="space-y-3">
+                    <input id="np-n" placeholder="Nama Produk" class="w-full rounded-xl border px-3 py-2 text-xs">
+                    <select id="np-k" class="w-full rounded-xl border px-3 py-2 text-xs"><option value="Sembako">Sembako</option><option value="Pertanian">Pertanian</option><option value="UMKM Lokal">UMKM Lokal</option></select>
+                    <div class="grid grid-cols-2 gap-2"><input type="number" id="np-h" placeholder="Harga (Rp)" class="rounded-xl border px-3 py-2 text-xs"><input type="number" id="np-s" placeholder="Stok" class="rounded-xl border px-3 py-2 text-xs"></div>
+                </div>
+            `, `<button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-200 text-xs font-bold">Batal</button><button onclick="saveNewProd()" class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">Simpan</button>`);
+        }
+        function saveNewProd() {
+            const nama = document.getElementById('np-n').value.trim(), harga = parseInt(document.getElementById('np-h').value);
+            if (!nama || !harga) return;
+            state.produkList.push({ id: 'P' + String(Date.now()).slice(-4), nama, kategori: document.getElementById('np-k').value, harga, stok: parseInt(document.getElementById('np-s').value) || 10, satuan: 'Pcs', icon: 'fa-box-open', color: 'emerald' });
+            syncCloudKey('produkList'); closeModal(); renderApp(); showToast('Produk baru ditambahkan!', 'success');
+        }
+
+        function renderSewa(el) {
+            el.innerHTML = `
+                <div class="space-y-5">
+                    <div class="flex flex-wrap justify-between items-center gap-3">
+                        <h1 class="text-xl font-extrabold">Kelola Aset & Sewa Desa</h1>
+                        <button onclick="openAddAsetModal()" class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold shadow"><i class="fa-solid fa-plus mr-1"></i> Tambah Aset Desa</button>
+                    </div>
+                    <div class="grid sm:grid-cols-2 gap-3">
+                        ${state.asetList.map(a => `
+                            <div class="bg-white rounded-2xl border p-4 flex flex-col justify-between gap-3">
+                                <div class="flex justify-between items-start gap-2">
+                                    <div class="flex gap-3"><div class="w-10 h-10 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center shrink-0"><i class="fa-solid ${a.icon}"></i></div>
+                                    <div><p class="font-bold text-xs">${a.nama}</p><p class="text-xs font-extrabold text-emerald-600">${formatRp(a.tarif)} / ${a.satuan}</p><p class="text-[11px] text-slate-500 mt-0.5">${a.deskripsi}</p></div></div>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${a.status==='Tersedia'?'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-700'}">${a.status}</span>
+                                </div>
+                                <div class="flex justify-end gap-2 pt-2 border-t">
+                                    <button onclick="toggleAset('${a.id}')" class="px-2.5 py-1 rounded-lg bg-slate-100 text-[11px] font-bold">${a.status==='Tersedia'?'Set Perawatan':'Set Tersedia'}</button>
+                                    <button onclick="delAset('${a.id}')" class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-600 text-[11px] font-bold">Hapus</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="bg-white rounded-2xl border p-4">
+                        <h3 class="font-bold text-sm mb-3">Antrean Booking Warga</h3>
+                        ${state.bookingList.map(b => `
+                            <div class="p-3 rounded-xl bg-slate-50 border flex flex-wrap justify-between items-center gap-2 text-xs mb-2">
+                                <div><p class="font-bold">${b.namaAset} — ${b.namaWarga}</p><p class="text-slate-500">Tgl Pakai: ${b.tanggalPakai} (${b.durasi} hari)</p></div>
+                                <div class="flex items-center gap-2"><span class="font-extrabold text-emerald-700">${formatRp(b.total)}</span>
+                                ${b.status==='Menunggu'?`<button onclick="approveBook('${b.id}')" class="px-3 py-1.5 rounded-xl bg-sky-600 text-white font-bold">Setujui & Kas</button>`:`<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold">${b.status}</span>`}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function openAddAsetModal() {
+            openModal('Tambah Aset Desa Baru', `
+                <div class="space-y-3">
+                    <input id="na-nama" placeholder="Nama Aset (mis: Aula Balai Desa)" class="w-full rounded-xl border px-3 py-2 text-xs">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="na-tarif" placeholder="Tarif (Rp)" class="rounded-xl border px-3 py-2 text-xs">
+                        <select id="na-sat" class="rounded-xl border px-3 py-2 text-xs"><option value="Hari">Hari</option><option value="Paket">Paket</option><option value="Rit / Hari">Rit / Hari</option><option value="Bulan">Bulan</option></select>
+                    </div>
+                    <select id="na-ico" class="w-full rounded-xl border px-3 py-2 text-xs"><option value="fa-building">Gedung / Aula / Kios</option><option value="fa-tent">Tenda / Kursi</option><option value="fa-tractor">Alat Pertanian</option><option value="fa-truck-pickup">Kendaraan</option><option value="fa-gears">Peralatan Lainnya</option></select>
+                    <textarea id="na-desk" rows="2" placeholder="Deskripsi singkat..." class="w-full rounded-xl border px-3 py-2 text-xs"></textarea>
+                </div>
+            `, `
+                <button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-200 text-xs font-bold">Batal</button>
+                <button onclick="saveAset()" class="px-5 py-2 rounded-xl bg-sky-600 text-white text-xs font-bold">Simpan Aset</button>
+            `);
+        }
+
+        function saveAset() {
+            const nama = document.getElementById('na-nama').value.trim(), tarif = parseInt(document.getElementById('na-tarif').value);
+            if (!nama || !tarif) { showToast('Isi nama aset & tarif!', 'warning'); return; }
+            state.asetList.unshift({ id: 'A' + Date.now(), nama, tarif, satuan: document.getElementById('na-sat').value, icon: document.getElementById('na-ico').value, deskripsi: document.getElementById('na-desk').value.trim() || 'Aset resmi Desa Gelanggang.', status: 'Tersedia' });
+            syncCloudKey('asetList'); closeModal(); renderApp(); showToast('Aset desa berhasil ditambahkan!', 'success');
+        }
+        function toggleAset(id) { const a = state.asetList.find(x => x.id === id); a.status = a.status === 'Tersedia' ? 'Perawatan' : 'Tersedia'; syncCloudKey('asetList'); renderApp(); }
+        function delAset(id) { state.asetList = state.asetList.filter(x => x.id !== id); syncCloudKey('asetList'); renderApp(); showToast('Aset dihapus', 'info'); }
+        function approveBook(id) {
+            const b = state.bookingList.find(x => x.id === id); b.status = 'Disetujui & Lunas';
+            state.transaksiKas.unshift({ id: 'KAS-' + String(Date.now()).slice(-4), tanggal: todayISO(), jenis: 'Masuk', unit: 'Sewa Aset', nominal: b.total, keterangan: `Sewa ${b.namaAset} (${b.namaWarga})` });
+            syncCloudKey('bookingList'); syncCloudKey('transaksiKas');
+            renderApp(); showToast('Booking disetujui & masuk Kas!', 'success');
+        }
+
+        function renderWarga(el) {
+            el.innerHTML = `
+                <div class="space-y-5">
+                    <h1 class="text-xl font-extrabold">Direktori Warga & Aspirasi</h1>
+                    <div class="bg-white rounded-2xl border p-5 shadow-sm space-y-3">
+                        <h3 class="font-bold text-sm">Aspirasi Masuk</h3>
+                        ${state.aspirasiList.map(a => `
+                            <div class="p-3.5 rounded-xl bg-slate-50 border text-xs">
+                                <p class="font-bold">${a.namaWarga} • <span class="text-purple-600">${a.kategori}</span></p>
+                                <p class="my-1.5">"${a.pesan}"</p>
+                                ${a.tanggapan ? `<p class="text-emerald-700 bg-white p-2 rounded-lg border"><strong>Balasan:</strong> ${a.tanggapan}</p>` : `
+                                    <div class="flex gap-2 mt-2"><input id="rep-${a.id}" placeholder="Ketik balasan..." class="flex-1 rounded-xl border px-3 py-1.5 text-xs"><button onclick="replyAsp('${a.id}')" class="px-3 py-1.5 rounded-xl bg-purple-600 text-white font-bold">Balas</button></div>
+                                `}
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="bg-white rounded-2xl border p-5 shadow-sm overflow-x-auto">
+                        <h3 class="font-bold text-sm mb-3">Warga Terdaftar (${state.wargaList.length})</h3>
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-50 text-slate-500 uppercase text-[10px]"><tr><th class="p-2.5">Nama</th><th class="p-2.5">Dusun</th><th class="p-2.5">Status</th></tr></thead>
+                            <tbody class="divide-y">${state.wargaList.map(w=>`<tr><td class="p-2.5 font-bold">${w.nama}</td><td class="p-2.5">${w.dusun}</td><td class="p-2.5"><span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px]">${w.status}</span></td></tr>`).join('')}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function replyAsp(id) {
+            const a = state.aspirasiList.find(x => x.id === id);
+            const txt = document.getElementById('rep-' + id).value.trim();
+            if (!txt) return;
+            a.tanggapan = txt; a.status = 'Ditanggapi';
+            syncCloudKey('aspirasiList'); renderApp(); showToast('Tanggapan terkirim ke Warga!', 'success');
+        }
+
+        function renderDarurat(el) {
+            const isDirektur = state.role === 'Direktur BUMDes';
+            el.innerHTML = `
+                <div class="space-y-5">
+                    <div class="flex flex-wrap justify-between items-center gap-3">
+                        <div>
+                            <h1 class="text-xl font-extrabold text-slate-900">Kontak Darurat 24 Jam Desa</h1>
+                            <p class="text-xs text-slate-500">Nomor Ambulans, Damkar, dan Bidan Desa yang tampil di Aplikasi Warga.</p>
+                        </div>
+                        ${isDirektur ? `<button onclick="openAddDaruratModal()" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow"><i class="fa-solid fa-plus mr-1"></i> Tambah Kontak</button>`
+                                     : `<span class="px-3 py-1.5 rounded-xl bg-amber-100 text-amber-800 text-xs font-bold"><i class="fa-solid fa-lock mr-1"></i> Khusus Direktur BUMDes</span>`}
+                    </div>
+                    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        ${state.kontakDarurat.map(k => `
+                            <div class="bg-white rounded-2xl border p-4 shadow-sm flex flex-col justify-between gap-3">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-11 h-11 rounded-xl bg-${k.color || 'rose'}-100 text-${k.color || 'rose'}-600 flex items-center justify-center text-lg shrink-0"><i class="fa-solid ${k.icon}"></i></div>
+                                    <div class="min-w-0">
+                                        <p class="font-extrabold text-sm">${k.nama}</p>
+                                        <p class="text-[11px] text-slate-500">${k.petugas}</p>
+                                        <p class="text-xs font-semibold mt-2"><i class="fa-solid fa-phone text-rose-500 w-4"></i> ${k.telp}</p>
+                                        <p class="text-xs font-semibold"><i class="fa-brands fa-whatsapp text-emerald-600 w-4"></i> +${k.wa}</p>
+                                    </div>
+                                </div>
+                                ${isDirektur ? `
+                                    <div class="flex justify-end gap-2 pt-2.5 border-t">
+                                        <button onclick="openEditDaruratModal('${k.id}')" class="px-3 py-1.5 rounded-lg bg-amber-50 text-amber-800 text-[11px] font-bold"><i class="fa-solid fa-pen mr-1"></i> Ubah Nomor</button>
+                                        <button onclick="deleteDarurat('${k.id}')" class="px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-600 text-[11px] font-bold"><i class="fa-solid fa-trash"></i></button>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function openEditDaruratModal(id) {
+            if (state.role !== 'Direktur BUMDes') return;
+            const k = state.kontakDarurat.find(x => x.id === id);
+            openModal('Ubah Nomor Darurat', `
+                <div class="space-y-3">
+                    <input id="ed-nama" value="${k.nama}" class="w-full rounded-xl border px-3 py-2 text-xs">
+                    <input id="ed-petugas" value="${k.petugas}" class="w-full rounded-xl border px-3 py-2 text-xs">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input id="ed-telp" value="${k.telp}" placeholder="No. Telepon" class="rounded-xl border px-3 py-2 text-xs">
+                        <input id="ed-wa" value="${k.wa}" placeholder="No. WA (62...)" class="rounded-xl border px-3 py-2 text-xs">
+                    </div>
+                </div>
+            `, `<button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-200 text-xs font-bold">Batal</button><button onclick="saveEditDarurat('${k.id}')" class="px-5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold">Simpan</button>`);
+        }
+
+        function saveEditDarurat(id) {
+            if (state.role !== 'Direktur BUMDes') return;
+            const k = state.kontakDarurat.find(x => x.id === id);
+            const nama = document.getElementById('ed-nama').value.trim(), telp = document.getElementById('ed-telp').value.trim();
+            if (!nama || !telp) return;
+            k.nama = nama; k.petugas = document.getElementById('ed-petugas').value.trim() || 'Unit Siaga Desa';
+            k.telp = telp; k.wa = document.getElementById('ed-wa').value.replace(/[^0-9]/g, '') || telp.replace(/^0/, '62');
+            syncCloudKey('kontakDarurat'); closeModal(); renderApp();
+            showToast(`Nomor ${k.nama} diperbarui & langsung berubah di HP Warga!`, 'success');
+        }
+
+        function openAddDaruratModal() {
+            if (state.role !== 'Direktur BUMDes') return;
+            openModal('Tambah Kontak Darurat', `
+                <div class="space-y-3">
+                    <input id="nd-nama" placeholder="Nama Layanan (mis: Babinsa / Polisi)" class="w-full rounded-xl border px-3 py-2 text-xs">
+                    <input id="nd-petugas" placeholder="Keterangan Petugas" class="w-full rounded-xl border px-3 py-2 text-xs">
+                    <div class="grid grid-cols-2 gap-2"><input id="nd-telp" placeholder="No. Telepon" class="rounded-xl border px-3 py-2 text-xs"><input id="nd-wa" placeholder="No. WA (62...)" class="rounded-xl border px-3 py-2 text-xs"></div>
+                    <select id="nd-ico" class="w-full rounded-xl border px-3 py-2 text-xs"><option value="fa-truck-medical">Ambulans</option><option value="fa-fire-extinguisher">Damkar</option><option value="fa-user-nurse">Bidan / Medis</option><option value="fa-shield-halved">Keamanan</option></select>
+                </div>
+            `, `<button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-200 text-xs font-bold">Batal</button><button onclick="saveNewDarurat()" class="px-5 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold">Simpan</button>`);
+        }
+
+        function saveNewDarurat() {
+            if (state.role !== 'Direktur BUMDes') return;
+            const nama = document.getElementById('nd-nama').value.trim(), telp = document.getElementById('nd-telp').value.trim();
+            if (!nama || !telp) return;
+            const wa = document.getElementById('nd-wa').value.replace(/[^0-9]/g, '') || telp.replace(/^0/, '62');
+            state.kontakDarurat.push({ id: 'DR-' + Date.now(), nama, petugas: document.getElementById('nd-petugas').value.trim() || 'Unit Siaga Desa', telp, wa, icon: document.getElementById('nd-ico').value, color: 'rose' });
+            syncCloudKey('kontakDarurat'); closeModal(); renderApp(); showToast('Kontak darurat ditambahkan!', 'success');
+        }
+
+        function deleteDarurat(id) {
+            if (state.role !== 'Direktur BUMDes') return;
+            state.kontakDarurat = state.kontakDarurat.filter(x => x.id !== id);
+            syncCloudKey('kontakDarurat'); renderApp(); showToast('Kontak darurat dihapus', 'info');
+        }
+
+        window.onload = function () { renderApp(); initCloudSync(); };
+    </script>
+</body>
+</html>
